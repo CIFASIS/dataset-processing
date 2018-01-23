@@ -2,7 +2,6 @@
 import argparse
 import rospy
 import rosbag
-#from std_msgs.msg import Int32, String #not needed, only for testing with basic example
 from nmea_msgs.msg import Sentence #  sudo apt-get install ros-kinetic-nmea-msgs
 
 
@@ -17,8 +16,8 @@ if __name__ == "__main__":
 
   bag = rosbag.Bag('test.bag', 'w')
 
-  gps_topic = "/gps_rtk"
-
+  gps_topic = "/nmea_sentence"
+  seq = 0
 
   for line in file:  #for each line in raw file, take each part: time,id,msg
 
@@ -38,18 +37,32 @@ if __name__ == "__main__":
     data = Sentence()
 
     # message header
+    data.header.seq = seq
     data.header.stamp.secs = seconds
     data.header.stamp.nsecs = nanoseconds
     data.header.frame_id = line.split(' ')[1][:-1]     #set frame_id = GPS-RTK
 
     # message data
     data.sentence = line.split(' ')[2] # message from the type of NMEA sentence
+
+    # remove checksum and CRLF
+#    data.sentence = data.sentence[:-5]
+
+    # add CR (Carriage Return) control character
+#    data.sentence = data.sentence + '\r'
+    # add LF (Line Feed) control character
+#    data.sentence = data.sentence + '\n'
+
+
 #    data.sentence = line [28:] # message from the type of NMEA sentence
 #    print data.header.stamp.secs
 #    print data.header.stamp.nsecs
 #    print data.header.frame_id
 #    print data.sentence
     bag.write(gps_topic, data, time)
+
+    # increment seq number
+    seq = seq + 1
 
   bag.close()
   file.close()
