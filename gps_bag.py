@@ -28,7 +28,7 @@ if __name__ == "__main__":
     seconds = int(timestamp.split('.')[0])
 
     # get milliseconds and convert them to nanoseconds
-    nanoseconds = int(timestamp.split('.')[1]) * 1000
+    nanoseconds = int(timestamp.split('.')[1]) * 1000 
 
     # create message
     data = Sentence()
@@ -40,7 +40,7 @@ if __name__ == "__main__":
     data.header.frame_id = line.split(' ')[1][:-1]     #set frame_id = GPS-RTK
 
     # message data
-    data.sentence = line.split(' ')[2] # message from the type of NMEA sentence
+    data.sentence = line.split(' ')[2][:-2]  # message from the type of NMEA sentence
 
     # remove checksum and CRLF
 #    data.sentence = data.sentence[:-5]
