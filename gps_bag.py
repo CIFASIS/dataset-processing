@@ -16,7 +16,7 @@ if __name__ == "__main__":
 
   bag = rosbag.Bag('test.bag', 'w')
 
-  gps_topic = "/nmea_sentence"
+  gps_topic = "nmea_sentence"
   seq = 0
 
   for line in file:  #for each line in raw file, take each part: time,id,msg
@@ -29,9 +29,6 @@ if __name__ == "__main__":
 
     # get milliseconds and convert them to nanoseconds
     nanoseconds = int(timestamp.split('.')[1]) * 1000
-
-    # create ros time for the message
-    time = rospy.Time(seconds, nanoseconds)
 
     # create message
     data = Sentence()
@@ -59,7 +56,7 @@ if __name__ == "__main__":
 #    print data.header.stamp.nsecs
 #    print data.header.frame_id
 #    print data.sentence
-    bag.write(gps_topic, data, time)
+    bag.write(gps_topic, data, data.header.stamp)
 
     # increment seq number
     seq = seq + 1
