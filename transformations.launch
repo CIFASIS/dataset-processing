@@ -1,0 +1,4 @@
+<launch>
+<node pkg="tf2_ros" type="static_transform_publisher" name="zed_left2imu" args="0.05 -0.06 0 1.5708 0 0 imu stereo_left" />
+<node pkg="tf2_ros" type="static_transform_publisher" name="zed_right2imu" args="0 0.12 0 0 0 0 stereo_left stereo_right" />
+</launch>
