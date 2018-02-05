@@ -109,17 +109,21 @@ if __name__ == "__main__":
     longitude = np.deg2rad(longitude)
 
     # convert from LLH to ECEF coordinates
-    x_ECEF, y_ECEF, z_ECEF = LLHtoECEF(latitude, longitude, altitude)
+    x, y, z = LLHtoECEF(latitude, longitude, altitude)
 
     # check if initial position was set, if not, set it
     if not initialPosition.size:
-      initialPosition = np.array([x_ECEF, y_ECEF, z_ECEF])
+      initialPosition = np.array((x, y, z))
 
-    position = np.array([x_ECEF, y_ECEF, z_ECEF]) - initialPosition
+    # compute Position w.r.t the starting position
+    position = np.array((x, y, z)) - initialPosition
 
     pos_grnd.append( position )
 
-  labelGT = "GPS-RTK"
+
+  ####################################################################
+  # General stuffs for plotting
+  ####################################################################
 
   # convert data to numpy arrays
   pos_grnd = np.array( pos_grnd )
@@ -136,7 +140,7 @@ if __name__ == "__main__":
   zy_path.append( (z_grnd, y_grnd) )
   lines3D.append( (x_grnd, y_grnd, z_grnd) )
 
-  labels = np.array([ labelGT ])
+  labels = np.array([ "GPS-RTK" ])
   colors = np.array( ["black"] )
   ph.plotPaths2D( xz_path,  labels, colors)
 
