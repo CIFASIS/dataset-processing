@@ -59,8 +59,23 @@ def LLHtoECEF(lat, lon, alt):
 
 # get LLH values from GGA nmea sentences
 def getLLHfromGGASensence( sentence ):
-  latitude = float( sentence.split(',')[2] )
-  longitude = float( sentence.split(',')[4] )
+
+
+  # get latitude in degrees
+  latitudeRaw = float(sentence.split(',')[2])
+  latitudeRawDegrees = latitudeRaw // 100 # division entera
+  latitudeRawMinutes = latitudeRaw % 100
+
+  latitude = latitudeRawDegrees + latitudeRawMinutes / 60.0
+
+  # get longitude in degrees
+  longitudeRaw = float( sentence.split(',')[4] )
+  longitudeRawDegrees = longitudeRaw // 100 # division entera
+  longitudeRawMinutes = longitudeRaw % 100
+
+  longitude = longitudeRawDegrees + longitudeRawMinutes / 60.0
+
+  # altitude is already in meters
   altitude = float( sentence.split(',')[9] )
 
   return latitude, longitude, altitude
