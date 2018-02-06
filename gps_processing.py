@@ -130,14 +130,16 @@ if __name__ == "__main__":
     longitude = np.deg2rad(longitude)
 
     # convert from LLH to ECEF coordinates
-    x, y, z = LLHtoECEF(latitude, longitude, altitude)
+    x, y, _ = LLHtoECEF(latitude, longitude, altitude)
+
+    # NOTE: we keep the altitude as our Z component
 
     # check if initial position was set, if not, set it
     if not initialPosition.size:
-      initialPosition = np.array((x, y, z))
+      initialPosition = np.array((x, y, altitude))
 
     # compute Position w.r.t the starting position
-    position = np.array((x, y, z)) - initialPosition
+    position = np.array((x, y, altitude)) - initialPosition
 
     pos_grnd.append( position )
 
