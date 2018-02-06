@@ -68,9 +68,9 @@ def getLLHfromGGASensence( sentence ):
 
   latitude = latitudeRawDegrees + latitudeRawMinutes / 60.0
 
-  print "latitudeRaw: " + str(latitudeRaw)
-  print "latitudeRawDegrees: " + str(latitudeRawDegrees)
-  print "latitudeRawMinutes: " + str(latitudeRawMinutes)
+#  print "latitudeRaw: " + str(latitudeRaw)
+#  print "latitudeRawDegrees: " + str(latitudeRawDegrees)
+#  print "latitudeRawMinutes: " + str(latitudeRawMinutes)
 
   # get longitude in degrees
   longitudeRaw = float( sentence.split(',')[4] )
@@ -79,9 +79,9 @@ def getLLHfromGGASensence( sentence ):
 
   longitude = longitudeRawDegrees + longitudeRawMinutes / 60.0
 
-  print "longitudeRaw: " + str(longitudeRaw)
-  print "longitudeRawDegrees: " + str(longitudeRawDegrees)
-  print "longitudeRawMinutes: " + str(longitudeRawMinutes)
+#  print "longitudeRaw: " + str(longitudeRaw)
+#  print "longitudeRawDegrees: " + str(longitudeRawDegrees)
+#  print "longitudeRawMinutes: " + str(longitudeRawMinutes)
 
 
   # altitude is already in meters
@@ -154,7 +154,7 @@ if __name__ == "__main__":
   # convert data to numpy arrays
   pos_grnd = np.array( pos_grnd )
 
-  xz_path = []
+  xy_path = []
   zy_path = []
   lines3D = []
 
@@ -162,13 +162,13 @@ if __name__ == "__main__":
   y_grnd = pos_grnd[:,1]
   z_grnd = pos_grnd[:,2]
 
-  xz_path.append( (x_grnd, z_grnd) )
+  xy_path.append( (x_grnd, y_grnd) )
   zy_path.append( (z_grnd, y_grnd) )
   lines3D.append( (x_grnd, y_grnd, z_grnd) )
 
   labels = np.array([ "GPS-RTK" ])
   colors = np.array( ["black"] )
-  ph.plotPaths2D( xz_path,  labels, colors)
+  ph.plotPaths2D( xy_path,  labels, colors)
 
   ph.plotPaths2D( zy_path, labels, colors)
 
