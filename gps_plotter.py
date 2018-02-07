@@ -4,7 +4,7 @@ import rospy
 import numpy as np
 from utils import plotHelpers as ph
 import matplotlib.pyplot as plt
-
+import utm
 
 
 # SOURCE: http://www.gpsinformation.org/dale/nmea.htm#GGA
@@ -39,45 +39,44 @@ import matplotlib.pyplot as plt
 #     *47          the checksum data, always begins with *
 
 
-# SOURCE: https://stackoverflow.com/questions/10473852/convert-latitude-and-longitude-to-point-in-3d-space
-def LLHtoECEF(lat, lon, alt):
-    # see http://www.mathworks.de/help/toolbox/aeroblks/llatoecefposition.html
-
-    rad = np.float64(6378137.0)        # Radius of the Earth (in meters)
-    f = np.float64(1.0/298.257223563)  # Flattening factor WGS84 Model
-    cosLat = np.cos(lat)
-    sinLat = np.sin(lat)
-    FF     = (1.0-f)**2
-    C      = 1/np.sqrt(cosLat**2 + FF * sinLat**2)
-    S      = C * FF
-
-    x = (rad * C + alt)*cosLat * np.cos(lon)
-    y = (rad * C + alt)*cosLat * np.sin(lon)
-    z = (rad * S + alt)*sinLat
-
-    return (x, y, z)
 
 # get LLH values from GGA nmea sentences
 def getLLHfromGGASensence( sentence ):
 
+  sentencesData = sentence.split(',')
 
   # get latitude in degrees
-  latitudeRaw = float(sentence.split(',')[2])
+  latitudeRaw = float(sentencesData[2])
   latitudeRawDegrees = latitudeRaw // 100 # division entera
   latitudeRawMinutes = latitudeRaw % 100
 
-  latitude = latitudeRawDegrees + latitudeRawMinutes / 60.0
+
+  # Get the sign of the latitude. It depends if latitude is North or South
+  latitudeSign = 1
+  latitudeCartidnalDirection = sentencesData[3]
+  if latitudeCartidnalDirection == 'S':
+    latitudeSign = -1
+
+  latitude = latitudeSign * (latitudeRawDegrees + latitudeRawMinutes / 60.0)
+
 
 #  print "latitudeRaw: " + str(latitudeRaw)
 #  print "latitudeRawDegrees: " + str(latitudeRawDegrees)
 #  print "latitudeRawMinutes: " + str(latitudeRawMinutes)
 
   # get longitude in degrees
-  longitudeRaw = float( sentence.split(',')[4] )
+  longitudeRaw = float( sentencesData[4] )
   longitudeRawDegrees = longitudeRaw // 100 # division entera
   longitudeRawMinutes = longitudeRaw % 100
 
-  longitude = longitudeRawDegrees + longitudeRawMinutes / 60.0
+  # Get the sign of the longitude. It depends if longitude is West or East
+  longitudeSign = 1
+  longitudeCartidnalDirection = sentencesData[5]
+
+  if longitudeCartidnalDirection == 'W':
+    longitudeSign = -1
+
+  longitude = longitudeSign * (longitudeRawDegrees + longitudeRawMinutes / 60.0)
 
 #  print "longitudeRaw: " + str(longitudeRaw)
 #  print "longitudeRawDegrees: " + str(longitudeRawDegrees)
@@ -85,10 +84,9 @@ def getLLHfromGGASensence( sentence ):
 
 
   # altitude is already in meters
-  altitude = float( sentence.split(',')[9] )
+  altitude = float( sentencesData[9] )
 
   return latitude, longitude, altitude
-
 
 
 
@@ -128,12 +126,10 @@ if __name__ == "__main__":
 
     latitude, longitude, altitude = getLLHfromGGASensence( sentence )
 
-    # convert degrees to radians
-    latitude = np.deg2rad(latitude)
-    longitude = np.deg2rad(longitude)
+    (easting, northing, zoneNumber, zoneLetter) = utm.from_latlon(latitude,longitude)
+    x = easting
+    y = northing
 
-    # convert from LLH to ECEF coordinates
-    x, y, _ = LLHtoECEF(latitude, longitude, altitude)
 
     # NOTE: we keep the altitude as our Z component
 
@@ -144,7 +140,9 @@ if __name__ == "__main__":
     # compute Position w.r.t the starting position
     position = np.array((x, y, altitude)) - initialPosition
 
+
     pos_grnd.append( position )
+
 
 
   ####################################################################
