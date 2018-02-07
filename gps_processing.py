@@ -7,7 +7,6 @@ import matplotlib.pyplot as plt
 import utm
 
 
-
 # SOURCE: http://www.gpsinformation.org/dale/nmea.htm#GGA
 
 #The most important NMEA sentences include the GGA which provides the current Fix data, the RMC which provides the minimum gps sentences information, and the GSA which provides the Satellite status data.
@@ -38,6 +37,7 @@ import utm
 #     (empty field) time in seconds since last DGPS update
 #     (empty field) DGPS station ID number
 #     *47          the checksum data, always begins with *
+
 
 
 # get LLH values from GGA nmea sentences
@@ -90,7 +90,6 @@ def getLLHfromGGASensence( sentence ):
 
 
 
-
 if __name__ == "__main__":
 
   parser = argparse.ArgumentParser(description='Script that create a rosbag containing NMEA ROS sentences')
@@ -99,7 +98,6 @@ if __name__ == "__main__":
   args = parser.parse_args()
 
   inputFile = open(args.gps_nmea, 'r')
-
 
   inputFileName = args.gps_nmea[:-4] # remove the extension (.log) of the input file
   outputFileName = str(inputFileName) + ".output" # add extension .output
@@ -152,12 +150,52 @@ if __name__ == "__main__":
 
     outputFile.write(timestamp +' '+ str(position[0]) +' '+ str(position[1]) +' '+ str(position[2]) + '\n')
 
+
   ####################################################################
-  # Close files and quit script
+  # Close files
   ####################################################################
 
   print "Output saved on " + outputFileName
 
   inputFile.close()
   outputFile.close()
+
+
+  ####################################################################
+  # General stuffs for plotting
+  ####################################################################
+
+  # convert data to numpy arrays
+  pos_grnd = np.array( pos_grnd )
+
+  xy_path = []
+  zy_path = []
+  lines3D = []
+
+  x_grnd = pos_grnd[:,0]
+  y_grnd = pos_grnd[:,1]
+  z_grnd = pos_grnd[:,2]
+
+  xy_path.append( (x_grnd, y_grnd) )
+  zy_path.append( (z_grnd, y_grnd) )
+  lines3D.append( (x_grnd, y_grnd, z_grnd) )
+
+  labels = np.array([ "GPS-RTK" ])
+  colors = np.array( ["black"] )
+  ph.plotPaths2D( xy_path,  labels, colors)
+
+  ph.plotPaths2D( zy_path, labels, colors)
+
+  ph.plotPaths3D( lines3D, labels, colors )
+
+  ####################################################################
+  # Show all plots
+  ####################################################################
+
+  plt.show()
+
+  ####################################################################
+  # quit script
+  ####################################################################
+
   quit()
