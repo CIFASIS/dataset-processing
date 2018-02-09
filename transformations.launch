@@ -1,9 +1,9 @@
 <launch>
   <!-- base_link convention is x forward, y left, and z up-->
-  <node pkg="tf2_ros" type="static_transform_publisher" name="base_linkt2imu" args="1 0 0 0 -1.57079633 3.14159265359 base_link imu" /> <!-- base_link is the father of imu. -->
-  <node pkg="tf2_ros" type="static_transform_publisher" name="base_linkt2gps" args="1 0 1 0 0 0 base_link gps" /> <!-- -->
-   <node pkg="tf2_ros" type="static_transform_publisher" name="base_link2zed_left" args="1 0.06 -0.05  -1.57079633 0 -1.57079633 base_link zed_left" />
+  <node pkg="tf2_ros" type="static_transform_publisher" name="imu2base_linkt" args="0 0 0 0 -1.57079633 3.14159265359 base_link imu" /> <!-- base_link is the father of imu. -->
+  <node pkg="tf2_ros" type="static_transform_publisher" name="gps2imu" args="0.00070337 -0.01282362 0.59345719 1.95559887e-02  -5.27424341e-04 -7.87282219e-04 9.99808314e-01 imu gps" /> <!-- -->
+  <node pkg="tf2_ros" type="static_transform_publisher" name="zed_left2imu" args="0 0.06 -0.05  -1.57079633 0 -1.57079633 imu zed_left" />
   <!--  TODO: Check these values with the sensor mounted in the robot -->
   <!-- <node pkg="tf2_ros" type="static_transform_publisher" name="imu2zed_left" args="-0.05 -0.06 0 1.57079633 0 0 imu zed_left" /> -->
-  <node pkg="tf2_ros" type="static_transform_publisher" name="zed_left2zed_right" args="0.12 0 0 0 0 0 zed_left zed_right" /> <!-- TODO: Check if we should use rectification values. This is only the baseline is the transformation. -->
+  <node pkg="tf2_ros" type="static_transform_publisher" name="zed_right2zed_left" args="0.12 0 0 0 0 0 zed_left zed_right" /> <!-- TODO: Check if we should use rectification values. This is only the baseline is the transformation. -->
 </launch>
