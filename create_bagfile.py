@@ -9,6 +9,7 @@ import numpy as np
 import cv2
 from sensor_msgs.msg import Imu
 from sensor_msgs.msg import Image
+from sensor_msgs.msg import NavSatFix, NavSatStatus
 import os
 #################### imu functions #########################
 # get parameters from the name of the file and modify imu values to correct error and mesure units
@@ -106,7 +107,7 @@ def save_image_bag(frame_id,seq, seconds, nanoseconds, image):
 
 #################### gps functions #########################
 
-def get_gps_data(line):
+def get_gps_data_fromGGA(line):
   timestamp = line.split(' ')[0]
   seconds = timestamp.split('.')[0]
   nanoseconds = timestamp.split('.')[1] + "000" 
@@ -114,6 +115,7 @@ def get_gps_data(line):
   sentencesData = line.split(',')
 
 #get status and service
+  gps_qual = sentencesData[6]
   if gps_qual == 0:
     status = NavSatStatus.STATUS_NO_FIX
   elif gps_qual == 1:
@@ -158,10 +160,63 @@ def get_gps_data(line):
 
   longitude = longitudeSign * (longitudeRawDegrees + longitudeRawMinutes / 60.0)
 
-# get altitude in meters (9 is above sea level, 10 is sea level above ellipsoide) with 0 reference at the ellipsoide
- altitude = float(sentencesData[9]) + float (sentencesData[10])
+# get altitude in meters (9 is above sea level, 11 is sea level above ellipsoide) with 0 reference at the ellipsoide
+  altitude = float(sentencesData[9]) + float (sentencesData[11])
 
-def save_gps_bag():
+# get covariance using Horizontal dilution of position 
+  hdop = float(sentencesData[8])
+  position_covariance = [0,0,0,0,0,0,0,0,0]
+  print position_covariance
+  position_covariance[0] = hdop ** 2
+  position_covariance[1] = 0.0
+  position_covariance[2] = 0.0
+  position_covariance[3] = 0.0
+  position_covariance[4] = hdop ** 2
+  position_covariance[5] = 0.0
+  position_covariance[6] = 0.0
+  position_covariance[7] = 0.0
+  position_covariance[8] = (2 * hdop) ** 2
+  position_covariance_type = NavSatFix.COVARIANCE_TYPE_APPROXIMATED
+
+  return frame_id, int(seconds), int(nanoseconds), status, service, latitude, longitude, altitude, position_covariance, position_covariance_type
+
+def save_gps_bag(frame_id, seq, seconds, nanoseconds, status, service, latitude, longitude, altitude, position_covariance, position_covariance_type):
+  ros_gps = NavSatFix()
+
+  ros_gps.header.seq = seq
+  ros_gps.header.stamp.secs = seconds
+  ros_gps.header.stamp.nsecs = nanoseconds
+  ros_gps.header.frame_id = frame_id
+  gps_topic = "/gps/fix"
+  ros_gps.status.status = status
+  ros_gps.status.service = service
+  ros_gps.latitude = latitude
+  ros_gps.longitude = longitude
+  ros_gps.altitude = altitude
+  ros_gps.position_covariance = position_covariance
+  ros_gps.position_covariance_type = position_covariance_type
+  print gps_topic
+  print ros_gps.header.stamp
+  bag.write(gps_topic, ros_gps, ros_gps.header.stamp)
+  print("dfdfdfd")
+"""
+def get_gps_data_fromRMC(line)
+  timestamp = line.split(' ')[0]
+  seconds = timestamp.split('.')[0]
+  nanoseconds = timestamp.split('.')[1] + "000" 
+  frame_id = line.split(' ')[1][:-1]     #set frame_id = GPS-RTK
+  sentencesData = line.split(',')
+  
+  current_vel = TwistStamped()
+  current_vel.header.stamp = current_time
+  current_vel.header.frame_id = frame_id
+  current_vel.twist.linear.x = data['speed'] * \
+    math.sin(data['true_course'])
+  current_vel.twist.linear.y = data['speed'] * \
+    math.cos(data['true_course'])
+  self.vel_pub.publish(current_vel)
+"""
+
   
 #############################################
 if __name__ == "__main__":
@@ -186,27 +241,28 @@ if __name__ == "__main__":
     seq_right = 0
     seq_left = 0
     for filename in os.listdir(args.cam_right):
-        frame_id, seconds, nanoseconds, image = get_image(args.cam_right, filename)
-        if frame_id == "right_img":
-          save_image_bag(frame_id, seq_right, seconds, nanoseconds, image)
-          seq_right = seq_right + 1
+      frame_id, seconds, nanoseconds, image = get_image(args.cam_right, filename)
+      if frame_id == "right_img":
+        save_image_bag(frame_id, seq_right, seconds, nanoseconds, image)
+        seq_right = seq_right + 1
 
-        if frame_id == "left_img":
-          save_image_bag(frame_id, seq_right, seconds, nanoseconds, image)
-          seq_left = seq_left + 1
-    bag.close()
+      if frame_id == "left_img":
+        save_image_bag(frame_id, seq_right, seconds, nanoseconds, image)
+        seq_left = seq_left + 1
+
 
 ################## gps part
   if args.gps:
     fr = open(args.gps,"r") #information obtained from sensor
     seq = 0
     for line in fr:
-      if "GGA" not in line:
-        continue
-      frame_id, seconds, nanoseconds, status, latitud, longitud, altitud 	= get_gps_data(line)
-      save_gps_bag(frame_id, seq, seconds, nanoseconds)
-      seq = seq + 1     # increment seq number
-
-for line in file:  #for each line in raw file, take each part: time,id,msg
-
+      if "GGA" in line:
+        frame_id, seconds, nanoseconds, status, service, latitude, longitude, altitude, position_covariance, position_covariance_type = get_gps_data_fromGGA(line)
+      #if "RMC" in line:
+      #  get_gps_data_fromRMC()
+      
+        save_gps_bag(frame_id, seq, seconds, nanoseconds, status, service, latitude, longitude, altitude, position_covariance, position_covariance_type)
+        seq = seq + 1     # increment seq number
+  
+  bag.close()
     
