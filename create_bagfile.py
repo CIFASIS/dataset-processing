@@ -104,13 +104,72 @@ def save_image_bag(frame_id,seq, seconds, nanoseconds, image):
 
   bag.write(img_topic, ros_image, ros_image.header.stamp)
 
+#################### gps functions #########################
+
+def get_gps_data(line):
+  timestamp = line.split(' ')[0]
+  seconds = timestamp.split('.')[0]
+  nanoseconds = timestamp.split('.')[1] + "000" 
+  frame_id = line.split(' ')[1][:-1]     #set frame_id = GPS-RTK
+  sentencesData = line.split(',')
+
+#get status and service
+  if gps_qual == 0:
+    status = NavSatStatus.STATUS_NO_FIX
+  elif gps_qual == 1:
+    status = NavSatStatus.STATUS_FIX
+  elif gps_qual == 2:
+    status = NavSatStatus.STATUS_SBAS_FIX
+  elif gps_qual in (4, 5):
+    status = NavSatStatus.STATUS_GBAS_FIX
+  elif gps_qual == 9:
+# Support specifically for NOVATEL OEM4 recievers which report WAAS fix as 9
+# http://www.novatel.com/support/known-solutions/which-novatel-position-types-correspond-to-the-gga-quality-indicator/
+    status = NavSatStatus.STATUS_SBAS_FIX
+  else:
+    status = NavSatStatus.STATUS_NO_FIX
+  
+  service = NavSatStatus.SERVICE_GPS	
+
+
+# get latitude in degrees
+  latitudeRaw = float(sentencesData[2])
+  latitudeRawDegrees = latitudeRaw // 100 # division entera
+  latitudeRawMinutes = latitudeRaw % 100
+# Get the sign of the latitude. It depends if latitude is North or South
+  latitudeSign = 1
+  latitudeCartidnalDirection = sentencesData[3]
+  if latitudeCartidnalDirection == 'S':
+    latitudeSign = -1
+
+  latitude = latitudeSign * (latitudeRawDegrees + latitudeRawMinutes / 60.0)
+
+  # get longitude in degrees
+  longitudeRaw = float( sentencesData[4] )
+  longitudeRawDegrees = longitudeRaw // 100 # division entera
+  longitudeRawMinutes = longitudeRaw % 100
+
+  # Get the sign of the longitude. It depends if longitude is West or East
+  longitudeSign = 1
+  longitudeCartidnalDirection = sentencesData[5]
+
+  if longitudeCartidnalDirection == 'W':
+    longitudeSign = -1
+
+  longitude = longitudeSign * (longitudeRawDegrees + longitudeRawMinutes / 60.0)
+
+# get altitude in meters (9 is above sea level, 10 is sea level above ellipsoide) with 0 reference at the ellipsoide
+ altitude = float(sentencesData[9]) + float (sentencesData[10])
+
+def save_gps_bag():
+  
 #############################################
 if __name__ == "__main__":
   
   parser = argparse.ArgumentParser(description='Script that takes images imu and gps along with the calibration info to create a rosbag')
   parser.add_argument('--imu', help='imu log file')
-  parser.add_argument('--cam_left', help='folder for the lef images')
-  parser.add_argument('--cam_right', help='folder for the right images')
+  parser.add_argument('--images', help='folder for the images')
+  parser.add_argument('--gps', help='gps log file')
   args = parser.parse_args()
   bag = rosbag.Bag('dataset.bag', 'w')
 ################## imu part
@@ -137,3 +196,17 @@ if __name__ == "__main__":
           seq_left = seq_left + 1
     bag.close()
 
+################## gps part
+  if args.gps:
+    fr = open(args.gps,"r") #information obtained from sensor
+    seq = 0
+    for line in fr:
+      if "GGA" not in line:
+        continue
+      frame_id, seconds, nanoseconds, status, latitud, longitud, altitud 	= get_gps_data(line)
+      save_gps_bag(frame_id, seq, seconds, nanoseconds)
+      seq = seq + 1     # increment seq number
+
+for line in file:  #for each line in raw file, take each part: time,id,msg
+
+    
