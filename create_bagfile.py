@@ -7,10 +7,14 @@ import argparse
 import math
 import numpy as np
 import cv2
+import os
+import yaml
 from sensor_msgs.msg import Imu
 from sensor_msgs.msg import Image
+from sensor_msgs.msg import CameraInfo
 from sensor_msgs.msg import NavSatFix, NavSatStatus
-import os
+from geometry_msgs.msg import TwistStamped
+
 #################### imu functions #########################
 # get parameters from the name of the file and modify imu values to correct error and mesure units
 def modify_imu_data(line):
@@ -81,6 +85,25 @@ def save_imu_bag(frame_id, seq, seconds, nanoseconds, Gx, Gy, Gz, Tx, Ty, Tz):
   bag.write(imu_topic, ros_imu, ros_imu.header.stamp)
 
 #################### images functions #########################
+
+# read the yaml file and get the information for the camera calibration, the camera is parse as arg (cam0 =left , cam1 = right)
+def get_camera_info(camera_info, camera):
+  with open(camera_info, 'r') as stream:
+    try:
+      data = yaml.load(stream)
+      print(data)
+      camera_info = CameraInfo()
+      camera_info.width = data[camera]['resolution'][0]
+      camera_info.height = data[camera]['resolution'][1]
+      camera_info.distortion_model = data[camera]['distortion_model']
+      """K = data['camera_matrix']['data']
+      D = data['distortion_coefficients']['data']
+      R = data['rectification_matrix']['data']
+      P = data['projection_matrix']['data']
+"""
+    except yaml.YAMLError as exc:
+      print(exc)
+  return camera_info
 # get the image from the path and the parameters from the name
 def get_image(path, filename):
   image = cv2.imread(path + "/" + filename)
@@ -91,10 +114,12 @@ def get_image(path, filename):
   return frame_id, int(seconds), int(nanoseconds), image
 
 # save img msg to the ROSBAG. It doesn't matter if its right or left, the difference comes with frame_ïd  
-def save_image_bag(frame_id,seq, seconds, nanoseconds, image):
+def save_image_bag(frame_id,seq, seconds, nanoseconds, image, ros_image_config):
   ros_image = Image()
-  img_topic = "/stereo/" + frame_id + "img_raw"
+  img_topic = "/stereo/" + frame_id + "/img_raw"
+  img_config_topic = "/stereo/" + frame_id + "/camera_info"
   ros_image.header.frame_id = frame_id
+  ros_image.header.seq = seq
   ros_image.header.stamp.secs = seconds
   ros_image.header.stamp.nsecs = nanoseconds
   ros_image.height = image.shape[0] #rows
@@ -103,10 +128,16 @@ def save_image_bag(frame_id,seq, seconds, nanoseconds, image):
   ros_image.encoding = "bgr8"
   ros_image.data = image.tostring()
 
-  bag.write(img_topic, ros_image, ros_image.header.stamp)
+  ros_image_config.header.frame_id = frame_id + "_camera_info"
+  ros_image_config.header.stamp = ros_image.header.stamp
+  ros_image_config.header.seq = seq
+  bag.write(img_topic, ros_image, ros_image.header.stamp) # write image in bag
+  bag.write(img_config_topic, ros_image_config, ros_image_config.header.stamp) # write calibration for the image in bag
+
 
 #################### gps functions #########################
 
+# get the gps information necesary for fix message from the line (that is presumed to be GGA)
 def get_gps_data_fromGGA(line):
   timestamp = line.split(' ')[0]
   seconds = timestamp.split('.')[0]
@@ -115,7 +146,7 @@ def get_gps_data_fromGGA(line):
   sentencesData = line.split(',')
 
 #get status and service
-  gps_qual = sentencesData[6]
+  gps_qual = int(sentencesData[6])
   if gps_qual == 0:
     status = NavSatStatus.STATUS_NO_FIX
   elif gps_qual == 1:
@@ -130,7 +161,6 @@ def get_gps_data_fromGGA(line):
     status = NavSatStatus.STATUS_SBAS_FIX
   else:
     status = NavSatStatus.STATUS_NO_FIX
-  
   service = NavSatStatus.SERVICE_GPS	
 
 
@@ -166,7 +196,6 @@ def get_gps_data_fromGGA(line):
 # get covariance using Horizontal dilution of position 
   hdop = float(sentencesData[8])
   position_covariance = [0,0,0,0,0,0,0,0,0]
-  print position_covariance
   position_covariance[0] = hdop ** 2
   position_covariance[1] = 0.0
   position_covariance[2] = 0.0
@@ -180,6 +209,7 @@ def get_gps_data_fromGGA(line):
 
   return frame_id, int(seconds), int(nanoseconds), status, service, latitude, longitude, altitude, position_covariance, position_covariance_type
 
+# save the information to the rosbag
 def save_gps_bag(frame_id, seq, seconds, nanoseconds, status, service, latitude, longitude, altitude, position_covariance, position_covariance_type):
   ros_gps = NavSatFix()
 
@@ -187,7 +217,7 @@ def save_gps_bag(frame_id, seq, seconds, nanoseconds, status, service, latitude,
   ros_gps.header.stamp.secs = seconds
   ros_gps.header.stamp.nsecs = nanoseconds
   ros_gps.header.frame_id = frame_id
-  gps_topic = "/gps/fix"
+  gps_GGA_topic = "/gps/fix"
   ros_gps.status.status = status
   ros_gps.status.service = service
   ros_gps.latitude = latitude
@@ -195,27 +225,33 @@ def save_gps_bag(frame_id, seq, seconds, nanoseconds, status, service, latitude,
   ros_gps.altitude = altitude
   ros_gps.position_covariance = position_covariance
   ros_gps.position_covariance_type = position_covariance_type
-  print gps_topic
-  print ros_gps.header.stamp
-  bag.write(gps_topic, ros_gps, ros_gps.header.stamp)
-  print("dfdfdfd")
-"""
-def get_gps_data_fromRMC(line)
+  bag.write(gps_GGA_topic, ros_gps, ros_gps.header.stamp)
+
+# get the gps information necesary for vel message from the line (that is presumed to be RMC)
+def get_gps_data_fromRMC(line):
   timestamp = line.split(' ')[0]
   seconds = timestamp.split('.')[0]
   nanoseconds = timestamp.split('.')[1] + "000" 
   frame_id = line.split(' ')[1][:-1]     #set frame_id = GPS-RTK
   sentencesData = line.split(',')
-  
-  current_vel = TwistStamped()
-  current_vel.header.stamp = current_time
-  current_vel.header.frame_id = frame_id
-  current_vel.twist.linear.x = data['speed'] * \
-    math.sin(data['true_course'])
-  current_vel.twist.linear.y = data['speed'] * \
-    math.cos(data['true_course'])
-  self.vel_pub.publish(current_vel)
-"""
+  velocity_meters = float(sentencesData[7]) * 0.514444
+  angle_rads =  float(sentencesData[8]) * math.pi / 180 
+  v_linear_x = velocity_meters * math.sin(angle_rads)
+  v_linear_y = velocity_meters * math.cos(angle_rads)
+
+  return frame_id, int(seconds), int(nanoseconds), v_linear_x, v_linear_y
+
+# save the information to the rosbag
+def save_gps_RMC_bag(frame_id, seq, seconds, nanoseconds, v_linear_x, v_linear_y):
+  ros_vel = TwistStamped()
+  ros_vel.header.seq = seq
+  ros_vel.header.stamp.secs = seconds
+  ros_vel.header.stamp.nsecs = nanoseconds   
+  ros_vel.header.frame_id = frame_id
+  gps_RMC_topic = "/gps/vel"
+  ros_vel.twist.linear.x = v_linear_x
+  ros_vel.twist.linear.y = v_linear_y
+  bag.write(gps_RMC_topic, ros_vel, ros_vel.header.stamp)
 
   
 #############################################
@@ -224,6 +260,7 @@ if __name__ == "__main__":
   parser = argparse.ArgumentParser(description='Script that takes images imu and gps along with the calibration info to create a rosbag')
   parser.add_argument('--imu', help='imu log file')
   parser.add_argument('--images', help='folder for the images')
+  parser.add_argument('--camera_info', help='yaml file with the camera calibration')
   parser.add_argument('--gps', help='gps log file')
   args = parser.parse_args()
   bag = rosbag.Bag('dataset.bag', 'w')
@@ -237,32 +274,41 @@ if __name__ == "__main__":
       seq = seq + 1     # increment seq number
       
 ################## images part
-  if args.images:
+  if args.images and args.camera_info:
+    i=0
+    k=0
+    camera_info = []
+    for i in range(0,2):
+      camera_info.append(get_camera_info(args.camera_info, "cam" + str(i))) 
     seq_right = 0
     seq_left = 0
-    for filename in os.listdir(args.cam_right):
-      frame_id, seconds, nanoseconds, image = get_image(args.cam_right, filename)
+    for filename in os.listdir(args.images): # agarra archivos en cualquier orden, faltara ordenarlo
+      frame_id, seconds, nanoseconds, image = get_image(args.images, filename)
       if frame_id == "right_img":
-        save_image_bag(frame_id, seq_right, seconds, nanoseconds, image)
+        save_image_bag(frame_id, seq_right, seconds, nanoseconds, image, camera_info[1])      
         seq_right = seq_right + 1
-
+        
       if frame_id == "left_img":
-        save_image_bag(frame_id, seq_right, seconds, nanoseconds, image)
+        save_image_bag(frame_id, seq_left, seconds, nanoseconds, image, camera_info[0])
         seq_left = seq_left + 1
-
-
+      
+      print k
+      k = k+ 1
 ################## gps part
   if args.gps:
     fr = open(args.gps,"r") #information obtained from sensor
-    seq = 0
+    seq_GGA = 0
+    seq_RMC = 0
     for line in fr:
       if "GGA" in line:
         frame_id, seconds, nanoseconds, status, service, latitude, longitude, altitude, position_covariance, position_covariance_type = get_gps_data_fromGGA(line)
-      #if "RMC" in line:
-      #  get_gps_data_fromRMC()
+        save_gps_bag(frame_id, seq_GGA, seconds, nanoseconds, status, service, latitude, longitude, altitude, position_covariance, position_covariance_type)
+        seq_GGA = seq_GGA + 1     # increment seq number
       
-        save_gps_bag(frame_id, seq, seconds, nanoseconds, status, service, latitude, longitude, altitude, position_covariance, position_covariance_type)
-        seq = seq + 1     # increment seq number
-  
+      if "RMC" in line:
+        frame_id, seconds, nanoseconds, v_linear_x, v_linear_y = get_gps_data_fromRMC(line)
+        save_gps_RMC_bag(frame_id, seq_RMC, seconds, nanoseconds, v_linear_x, v_linear_y)
+        seq_RMC = seq_RMC + 1     # increment seq number
+        
   bag.close()
     
