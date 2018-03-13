@@ -9,18 +9,19 @@ import numpy as np
 import cv2
 import os
 import yaml
+import tf
+import rospy
 from sensor_msgs.msg import Imu
 from sensor_msgs.msg import Image
 from sensor_msgs.msg import CameraInfo
 from sensor_msgs.msg import NavSatFix, NavSatStatus
-from geometry_msgs.msg import TwistStamped
-
+from geometry_msgs.msg import TwistStamped, TransformStamped
+from tf2_msgs.msg import TFMessage
 #################### imu functions #########################
 # get parameters from the name of the file and modify imu values to correct error and mesure units
 def modify_imu_data(line):
 #since number of characters of the values may change lines are splitted usings spaces as delimiters	
   splitted_line = line.split(" ")
-  frame_id = splitted_line[1]
   seconds,nanoseconds = splitted_line[0].split(".")
   nanoseconds = nanoseconds + "000"
   Gx = splitted_line[3]
@@ -48,7 +49,7 @@ def modify_imu_data(line):
   Gy_rads = Gy * math.pi / 180
   Gz_rads = Gz * math.pi / 180
 
-  return frame_id, int(seconds), int(nanoseconds), Gx_rads, Gy_rads, Gz_rads, Tx_meters, Ty_meters, Tz_meters      
+  return int(seconds), int(nanoseconds), Gx_rads, Gy_rads, Gz_rads, Tx_meters, Ty_meters, Tz_meters      
 
 # save imu msg to the ROSBAG
 def save_imu_bag(frame_id, seq, seconds, nanoseconds, Gx, Gy, Gz, Tx, Ty, Tz):
@@ -91,7 +92,6 @@ def get_camera_info(camera_info, camera):
   with open(camera_info, 'r') as stream:
     try:
       data = yaml.load(stream)
-      print(data)
       camera_info = CameraInfo()
       camera_info.width = data[camera]['resolution'][0]
       camera_info.height = data[camera]['resolution'][1]
@@ -142,7 +142,6 @@ def get_gps_data_fromGGA(line):
   timestamp = line.split(' ')[0]
   seconds = timestamp.split('.')[0]
   nanoseconds = timestamp.split('.')[1] + "000" 
-  frame_id = line.split(' ')[1][:-1]     #set frame_id = GPS-RTK
   sentencesData = line.split(',')
 
 #get status and service
@@ -207,7 +206,7 @@ def get_gps_data_fromGGA(line):
   position_covariance[8] = (2 * hdop) ** 2
   position_covariance_type = NavSatFix.COVARIANCE_TYPE_APPROXIMATED
 
-  return frame_id, int(seconds), int(nanoseconds), status, service, latitude, longitude, altitude, position_covariance, position_covariance_type
+  return int(seconds), int(nanoseconds), status, service, latitude, longitude, altitude, position_covariance, position_covariance_type
 
 # save the information to the rosbag
 def save_gps_bag(frame_id, seq, seconds, nanoseconds, status, service, latitude, longitude, altitude, position_covariance, position_covariance_type):
@@ -232,14 +231,13 @@ def get_gps_data_fromRMC(line):
   timestamp = line.split(' ')[0]
   seconds = timestamp.split('.')[0]
   nanoseconds = timestamp.split('.')[1] + "000" 
-  frame_id = line.split(' ')[1][:-1]     #set frame_id = GPS-RTK
   sentencesData = line.split(',')
   velocity_meters = float(sentencesData[7]) * 0.514444
   angle_rads =  float(sentencesData[8]) * math.pi / 180 
   v_linear_x = velocity_meters * math.sin(angle_rads)
   v_linear_y = velocity_meters * math.cos(angle_rads)
 
-  return frame_id, int(seconds), int(nanoseconds), v_linear_x, v_linear_y
+  return int(seconds), int(nanoseconds), v_linear_x, v_linear_y
 
 # save the information to the rosbag
 def save_gps_RMC_bag(frame_id, seq, seconds, nanoseconds, v_linear_x, v_linear_y):
@@ -253,14 +251,43 @@ def save_gps_RMC_bag(frame_id, seq, seconds, nanoseconds, v_linear_x, v_linear_y
   ros_vel.twist.linear.y = v_linear_y
   bag.write(gps_RMC_topic, ros_vel, ros_vel.header.stamp)
 
-  
+#################### gps functions #########################
+
+def get_transformation(from_frame_id, to_frame_id, transform):
+  if to_frame_id == "GPS_frame_id":
+    t=transform['position_gps_imu']
+    q=transform['orientation_gps_imu']
+  else:
+    t = transform[0:3, 3]
+    q = tf.transformations.quaternion_from_matrix(transform)
+  tf_msg = TransformStamped()
+  tf_msg.header.frame_id = from_frame_id
+  tf_msg.child_frame_id = to_frame_id
+  tf_msg.transform.translation.x = float(t[0])
+  tf_msg.transform.translation.y = float(t[1])
+  tf_msg.transform.translation.z = float(t[2])
+  tf_msg.transform.rotation.x = float(q[0])
+  tf_msg.transform.rotation.y = float(q[1])
+  tf_msg.transform.rotation.z = float(q[2])
+  tf_msg.transform.rotation.w = float(q[3])
+  return tf_msg
+
+def save_tf_bag(tfm, timestamps):
+  seq = 0
+  tf_topic = "/static_tf"
+  for timestamp in timestamps:
+    for i in range(len(tfm.transforms)):
+      tfm.transforms[i].header.seq = seq
+      tfm.transforms[i].header.stamp = timestamp
+    bag.write(tf_topic, tfm, timestamp)
+    seq = seq +1
 #############################################
 if __name__ == "__main__":
   
   parser = argparse.ArgumentParser(description='Script that takes images imu and gps along with the calibration info to create a rosbag')
   parser.add_argument('--imu', help='imu log file')
   parser.add_argument('--images', help='folder for the images')
-  parser.add_argument('--camera_info', help='yaml file with the camera calibration')
+  parser.add_argument('--calibration', help='yaml file with the calibration')
   parser.add_argument('--gps', help='gps log file')
   args = parser.parse_args()
   bag = rosbag.Bag('dataset.bag', 'w')
@@ -268,47 +295,74 @@ if __name__ == "__main__":
   if args.imu:
     fr = open(args.imu,"r") #information obtained from sensor
     seq = 0
+    imu_frame_id = "IMU"
+    global_timestamps = []
     for line in fr:
-      frame_id, seconds, nanoseconds, Gx, Gy, Gz, Tx, Ty, Tz = modify_imu_data(line)
-      save_imu_bag(frame_id, seq, seconds, nanoseconds, Gx, Gy, Gz, Tx, Ty, Tz)
+      seconds, nanoseconds, Gx, Gy, Gz, Tx, Ty, Tz = modify_imu_data(line)
+      save_imu_bag(imu_frame_id, seq, seconds, nanoseconds, Gx, Gy, Gz, Tx, Ty, Tz)
       seq = seq + 1     # increment seq number
-      
+      global_timestamps.append(rospy.Time(seconds,nanoseconds))
 ################## images part
   if args.images and args.camera_info:
     i=0
     k=0
     camera_info = []
+    image_r_frame_id = "camera_right"
+    image_l_frame_id = "camera_left"
     for i in range(0,2):
       camera_info.append(get_camera_info(args.camera_info, "cam" + str(i))) 
     seq_right = 0
     seq_left = 0
-    for filename in os.listdir(args.images): # agarra archivos en cualquier orden, faltara ordenarlo
-      frame_id, seconds, nanoseconds, image = get_image(args.images, filename)
-      if frame_id == "right_img":
-        save_image_bag(frame_id, seq_right, seconds, nanoseconds, image, camera_info[1])      
+    for filename in sorted(os.listdir(args.images)): 
+      camera, seconds, nanoseconds, image = get_image(args.images, filename)
+      if camera == "right_img":
+        save_image_bag(image_r_frame_id, seq_right, seconds, nanoseconds, image, camera_info[1])      
         seq_right = seq_right + 1
         
-      if frame_id == "left_img":
-        save_image_bag(frame_id, seq_left, seconds, nanoseconds, image, camera_info[0])
+      if camera == "left_img":
+        save_image_bag(image_l_frame_id, seq_left, seconds, nanoseconds, image, camera_info[0])
         seq_left = seq_left + 1
       
-      print k
       k = k+ 1
 ################## gps part
   if args.gps:
     fr = open(args.gps,"r") #information obtained from sensor
     seq_GGA = 0
     seq_RMC = 0
-    for line in fr:
+    GPS_frame_id = "GPS-RTK"
+    for line in fr:	
       if "GGA" in line:
-        frame_id, seconds, nanoseconds, status, service, latitude, longitude, altitude, position_covariance, position_covariance_type = get_gps_data_fromGGA(line)
-        save_gps_bag(frame_id, seq_GGA, seconds, nanoseconds, status, service, latitude, longitude, altitude, position_covariance, position_covariance_type)
+        seconds, nanoseconds, status, service, latitude, longitude, altitude, position_covariance, position_covariance_type = get_gps_data_fromGGA(line)
+        save_gps_bag(GPS_frame_id, seq_GGA, seconds, nanoseconds, status, service, latitude, longitude, altitude, position_covariance, position_covariance_type)
         seq_GGA = seq_GGA + 1     # increment seq number
       
       if "RMC" in line:
-        frame_id, seconds, nanoseconds, v_linear_x, v_linear_y = get_gps_data_fromRMC(line)
-        save_gps_RMC_bag(frame_id, seq_RMC, seconds, nanoseconds, v_linear_x, v_linear_y)
+        seconds, nanoseconds, v_linear_x, v_linear_y = get_gps_data_fromRMC(line)
+        save_gps_RMC_bag(GPS_frame_id, seq_RMC, seconds, nanoseconds, v_linear_x, v_linear_y)
         seq_RMC = seq_RMC + 1     # increment seq number
         
+
+################# transformations part
+
+  with open(args.calibration, 'r') as stream:
+    try:
+      data = yaml.load(stream)
+      T_base_link_to_imu = np.eye(4, 4)
+      T_cam_l_to_imu = np.matrix(data['cam0']['T_cam_imu'])
+      T_cam_r_to_imu = np.matrix(data['cam1']['T_cam_imu'])
+      T_GPS_to_imu = data['GPS']
+
+      transforms = [
+      ('base_link', imu_frame_id, T_base_link_to_imu),
+      (imu_frame_id, "image_l_frame_id" , T_cam_l_to_imu),
+      (imu_frame_id, "image_r_frame_id", T_cam_r_to_imu),
+      (imu_frame_id, "GPS_frame_id", T_GPS_to_imu) #it is already in position-orientation(Quat), no need for transf
+      ]
+      tfm = TFMessage()
+      for transform in transforms:
+        tf_msg = get_transformation(transform[0],transform[1], transform[2])
+        tfm.transforms.append(tf_msg)
+      save_tf_bag(tfm, global_timestamps)
+    except yaml.YAMLError as exc:
+      print(exc)  
   bag.close()
-    
