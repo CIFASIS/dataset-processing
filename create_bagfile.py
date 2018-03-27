@@ -7,6 +7,7 @@ import argparse
 import math
 import numpy as np
 import cv2
+#from cv2 import cv2util
 import os
 import yaml
 import tf
@@ -17,7 +18,9 @@ from sensor_msgs.msg import CameraInfo
 from sensor_msgs.msg import NavSatFix, NavSatStatus
 from geometry_msgs.msg import TwistStamped, TransformStamped
 from tf2_msgs.msg import TFMessage
+
 #################### imu functions #########################
+
 # get parameters from the name of the file and modify imu values to correct error and mesure units
 def modify_imu_data(line):
 #since number of characters of the values may change lines are splitted usings spaces as delimiters	
@@ -31,13 +34,20 @@ def modify_imu_data(line):
   Ty = splitted_line[7]
   Tz = splitted_line[8]
 
-### adjustment of value's offsets
-  Gx = float(Gx)+4.5970119258
-  Gy = float(Gy)-4.78218418728
-  Gz = float(Gz)-7.36174929329
-  Tx = float(Tx)-926.447738516
-  Ty = float(Ty)+15.4401130742
-  Tz = float(Tz)+401.003545936
+### adjustment of value's offsets (everythin in g and Hz)
+  with open(args.calibration, 'r') as stream:
+    try:
+      data_offset = yaml.load(stream)
+      acc_offset = data_offset['imu']['acc_offset']
+      gyro_offset = data_offset['imu']['gyro_offset']
+    except yaml.YAMLError as exc:
+      print(exc) 
+  Gx = float(Gx)+float(gyro_offset[0])
+  Gy = float(Gy)+float(gyro_offset[1])
+  Gz = float(Gz)+float(gyro_offset[2])
+  Tx = float(Tx)+float(acc_offset[0])
+  Ty = float(Ty)+float(acc_offset[1])
+  Tz = float(Tz)+float(acc_offset[2])
 
 ### convertion from g to m/s²
   Tx_meters = Tx * 9.80665
@@ -81,7 +91,8 @@ def save_imu_bag(frame_id, seq, seconds, nanoseconds, Gx, Gy, Gz, Tx, Ty, Tz):
   ros_imu.angular_velocity_covariance[6] = 0.0
   ros_imu.angular_velocity_covariance[7] = 0.0
   ros_imu.angular_velocity_covariance[8] = 0.001
-  ros_imu.linear_acceleration_covariance = ros_imu.orientation_covariance = ros_imu.angular_velocity_covariance;
+  ros_imu.linear_acceleration_covariance = ros_imu.orientation_covariance = ros_imu.angular_velocity_covariance
+  #for the orientation we need to put -1 in the first value of covariance to show we do not have orientation
 
   bag.write(imu_topic, ros_imu, ros_imu.header.stamp)
 
@@ -93,18 +104,109 @@ def get_camera_info(camera_info, camera):
     try:
       data = yaml.load(stream)
       camera_info = CameraInfo()
+      T=[0,0,0]
       camera_info.width = data[camera]['resolution'][0]
       camera_info.height = data[camera]['resolution'][1]
       camera_info.distortion_model = data[camera]['distortion_model']
-      """K = data['camera_matrix']['data']
-      D = data['distortion_coefficients']['data']
-      R = data['rectification_matrix']['data']
-      P = data['projection_matrix']['data']
-"""
+      
+      fx,fy,cx,cy = data[camera]['intrinsics']
+      camera_info.K[0:3] = [fx, 0, cx]
+      camera_info.K[3:6] = [0, fy, cy]
+      camera_info.K[6:9] = [0, 0, 1]
+      
+      k1,k2,t1,t2 = data[camera]['distortion_coeffs']
+      camera_info.D = [k1,k2,t1,t2,0]
+#if cam0 then it's left camera,so R = identity and T = [0 0 0]
+      if camera == "cam0":
+        camera_info.R[0:3] = [1, 0, 0]
+        camera_info.R[3:6] = [0, 1, 0]
+        camera_info.R[6:9] = [0, 0, 1]
+      else:
+        camera_info.R[0:3] = data[camera]['T_cn_cnm1'][0][:3]
+        camera_info.R[3:6] = data[camera]['T_cn_cnm1'][1][:3]
+        camera_info.R[6:9] = data[camera]['T_cn_cnm1'][2][:3]
+        T[0:3] = [data[camera]['T_cn_cnm1'][0][3] ,data[camera]['T_cn_cnm1'][1][3], data[camera]['T_cn_cnm1'][2][3]]
+
     except yaml.YAMLError as exc:
       print(exc)
-  return camera_info
+    print camera_info.R
+    print camera_info.P
+  return camera_info, T
 # get the image from the path and the parameters from the name
+
+def rectify_images(cam0,cam1,T):
+  """
+  cameraMatrix1 = cv2.np2cvmat(cam0.K)
+  cameraMatrix2 = cv2util.np2cvmat(cam1.K)
+  distCoeffs1 = cv2util.np2cvmat(cam0.D)
+  distCoeffs2 = cv2util.np2cvmat(cam1.D)
+  R = cv2.np2cvmat(cam1.R)
+  T = cv2.np2cvmat(T)
+  # initialize result cvmats
+  R1 = cv2.CreateMat(3, 3, cv2.CV_64FC1)
+  R2 = cv2.CreateMat(3, 3, cv2.CV_64FC1)
+  P1 = cv2.CreateMat(3, 4, cv2.CV_64FC1)
+  P2 = cv2.CreateMat(3, 4, cv2.CV_64FC1)
+  # do rectification
+  cv2.StereoRectify(cameraMatrix1, cameraMatrix2, distCoeffs1,distCoeffs2,(cam0.width, cam0.height), R, T, R1, R2, P1, P2)
+  # convert results back to np data types
+  R1 = cv2.cvmat2np(R1).reshape((3, 3))
+  R2 = cv2.cvmat2np(R2).reshape((3, 3))
+  P1 = cv2.cvmat2np(P1).reshape((3, 4))
+  P2 = cv2.cvmat2np(P2).reshape((3, 4))
+  """
+  """
+  R1_rectified = np.zeros(shape=(3,3))
+  R2_rectified = np.zeros(shape=(3,3))
+  P1_rectified = np.zeros(shape=(3,4))
+  P2_rectified = np.zeros(shape=(3,4))
+  Q_rectified = np.zeros(shape=(4,4))
+  print "222"
+  print R1_rectified
+  #print P2_rectified
+  print np.array(cam0.K)
+  print cam0.K
+  print np.reshape(cam0.K,(3,3))
+  #print cam1.K
+  #print cam0.D
+  #print cam1.D
+
+  cv2.stereoRectify(np.reshape(cam0.K,(3,3)), np.reshape(cam1.K,(3,3)), np.reshape(cam0.D,(1,5)), np.reshape(cam1.D,(1,5)), (cam0.width, cam0.height), np.reshape(cam1.R,(3,3)), np.array(T), R1_rectified, R2_rectified, P1_rectified, P2_rectified, Q_rectified)
+  print "dfdf"
+  """
+  R1_rectified = np.zeros((3,3))
+  R2_rectified = np.zeros((3,3))
+  P1_rectified = np.zeros((3,4))
+  P2_rectified = np.zeros((3,4))
+  Q_rectified = np.zeros((4,4))
+  print "222"
+  print R1_rectified
+  #print P2_rectified
+  #print np.array(cam0.K)
+  print cam0.D
+  #print np.reshape(cam0.K,(3,3))
+  #print cam1.K
+  #print cam0.D
+  #print cam1.D
+
+  cv2.stereoRectify(np.reshape(cam0.K,(3,3)),np.reshape(cam0.D,(5,1)),np.reshape(cam1.K,(3,3)), np.reshape(cam1.D,(5,1)), (cam0.width, cam0.height), np.reshape(cam1.R,(3,3)), np.reshape(T,(3,1)), R1_rectified, R2_rectified, P1_rectified, P2_rectified, Q_rectified)
+  """cam0.R = np.reshape(R1_rectified,(1,9))
+  cam0.P = np.reshape(P1_rectified,(1,12))
+  cam1.R = np.reshape(R2_rectified,(1,9))
+  cam1.P = np.reshape(P2_rectified,(1,12))
+  """
+
+  cam0.R = list(R1_rectified.flat)
+  cam0.P = list(P1_rectified.flat)
+  cam1.R = list(R2_rectified.flat)
+  cam1.P = list(P2_rectified.flat)
+  print "dfdfdfdfdf"
+  print cam1.P
+  """print P1_rectified
+  print P2_rectified
+  """
+  return cam0, cam1
+
 def get_image(path, filename):
   image = cv2.imread(path + "/" + filename)
   splitted_filename = filename.split("_")
@@ -303,14 +405,16 @@ if __name__ == "__main__":
       seq = seq + 1     # increment seq number
       global_timestamps.append(rospy.Time(seconds,nanoseconds))
 ################## images part
-  if args.images and args.camera_info:
+  if args.images and args.calibration:
     i=0
     k=0
-    camera_info = []
+    camera_info = [0, 0]
+    camera_info_rect = [0, 0]
     image_r_frame_id = "camera_right"
     image_l_frame_id = "camera_left"
     for i in range(0,2):
-      camera_info.append(get_camera_info(args.camera_info, "cam" + str(i))) 
+      camera_info[i],T = get_camera_info(args.calibration, "cam" + str(i))
+    camera_info_rect[0],camera_info_rect[1] = rectify_images(camera_info[0], camera_info[1], T) 
     seq_right = 0
     seq_left = 0
     for filename in sorted(os.listdir(args.images)): 
@@ -343,14 +447,14 @@ if __name__ == "__main__":
         
 
 ################# transformations part
-
+  """
   with open(args.calibration, 'r') as stream:
     try:
       data = yaml.load(stream)
       T_base_link_to_imu = np.eye(4, 4)
       T_cam_l_to_imu = np.matrix(data['cam0']['T_cam_imu'])
       T_cam_r_to_imu = np.matrix(data['cam1']['T_cam_imu'])
-      T_GPS_to_imu = data['GPS']
+      T_GPS_to_imu = data['gps']
 
       transforms = [
       ('base_link', imu_frame_id, T_base_link_to_imu),
@@ -364,5 +468,6 @@ if __name__ == "__main__":
         tfm.transforms.append(tf_msg)
       save_tf_bag(tfm, global_timestamps)
     except yaml.YAMLError as exc:
-      print(exc)  
+      print(exc)
+  """
   bag.close()
