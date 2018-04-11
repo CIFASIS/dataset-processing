@@ -27,12 +27,12 @@ def modify_imu_data(line):
   splitted_line = line.split(" ")
   seconds,nanoseconds = splitted_line[0].split(".")
   nanoseconds = nanoseconds + "000"
-  Gx = splitted_line[3]
-  Gy = splitted_line[4]
-  Gz = splitted_line[5]
-  Tx = splitted_line[6]
-  Ty = splitted_line[7]
-  Tz = splitted_line[8]
+  Gx = float(splitted_line[3])
+  Gy = float(splitted_line[4])
+  Gz = float(splitted_line[5])
+  Tx = float(splitted_line[6])
+  Ty = float(splitted_line[7])
+  Tz = float(splitted_line[8])
 
 ### adjustment of value's offsets (everythin in g and Hz)
   with open(args.calibration, 'r') as stream:
@@ -42,17 +42,17 @@ def modify_imu_data(line):
       gyro_offset = data_offset['imu']['gyro_offset']
     except yaml.YAMLError as exc:
       print(exc) 
-  Gx = float(Gx)+float(gyro_offset[0])
-  Gy = float(Gy)+float(gyro_offset[1])
-  Gz = float(Gz)+float(gyro_offset[2])
-  Tx = float(Tx)+float(acc_offset[0])
-  Ty = float(Ty)+float(acc_offset[1])
-  Tz = float(Tz)+float(acc_offset[2])
+  Gx = Gx+float(gyro_offset[0])
+  Gy = Gy+float(gyro_offset[1])
+  Gz = Gz+float(gyro_offset[2])
+#  Tx = float(Tx)+float(acc_offset[0])
+#  Ty = float(Ty)+float(acc_offset[1])
+#  Tz = float(Tz)+float(acc_offset[2])
 
 ### convertion from g to m/s²
-  Tx_meters = Tx * 9.80665
-  Ty_meters = Ty * 9.80665
-  Tz_meters = Tz * 9.80665
+  Tx_meters = (Tx * 9.80665)/1000
+  Ty_meters = (Ty * 9.80665)/1000
+  Tz_meters = (Tz * 9.80665)/1000
 
 ### convertion from degrees to rad/s
   Gx_rads = Gx * math.pi / 180
@@ -68,7 +68,7 @@ def save_imu_bag(frame_id, seq, seconds, nanoseconds, Gx, Gy, Gz, Tx, Ty, Tz):
   ros_imu.header.stamp.secs = seconds
   ros_imu.header.stamp.nsecs = nanoseconds
   ros_imu.header.frame_id = frame_id
-  imu_topic = "/imu/data_raw"
+  imu_topic = "/imu"
 
   ros_imu.angular_velocity.x=Gx
   ros_imu.angular_velocity.y=Gy
@@ -107,7 +107,10 @@ def get_camera_info(camera_info, camera):
       T=[0,0,0]
       camera_info.width = data[camera]['resolution'][0]
       camera_info.height = data[camera]['resolution'][1]
-      camera_info.distortion_model = data[camera]['distortion_model']
+      if data[camera]['distortion_model'] == "radtan":
+        camera_info.distortion_model = "plumb_bob"
+      else:
+        camera_info.distortion_model = data[camera]['distortion_model']
       
       fx,fy,cx,cy = data[camera]['intrinsics']
       camera_info.K[0:3] = [fx, 0, cx]
@@ -129,82 +132,22 @@ def get_camera_info(camera_info, camera):
 
     except yaml.YAMLError as exc:
       print(exc)
-    print camera_info.R
-    print camera_info.P
+
   return camera_info, T
 # get the image from the path and the parameters from the name
 
 def rectify_images(cam0,cam1,T):
-  """
-  cameraMatrix1 = cv2.np2cvmat(cam0.K)
-  cameraMatrix2 = cv2util.np2cvmat(cam1.K)
-  distCoeffs1 = cv2util.np2cvmat(cam0.D)
-  distCoeffs2 = cv2util.np2cvmat(cam1.D)
-  R = cv2.np2cvmat(cam1.R)
-  T = cv2.np2cvmat(T)
-  # initialize result cvmats
-  R1 = cv2.CreateMat(3, 3, cv2.CV_64FC1)
-  R2 = cv2.CreateMat(3, 3, cv2.CV_64FC1)
-  P1 = cv2.CreateMat(3, 4, cv2.CV_64FC1)
-  P2 = cv2.CreateMat(3, 4, cv2.CV_64FC1)
-  # do rectification
-  cv2.StereoRectify(cameraMatrix1, cameraMatrix2, distCoeffs1,distCoeffs2,(cam0.width, cam0.height), R, T, R1, R2, P1, P2)
-  # convert results back to np data types
-  R1 = cv2.cvmat2np(R1).reshape((3, 3))
-  R2 = cv2.cvmat2np(R2).reshape((3, 3))
-  P1 = cv2.cvmat2np(P1).reshape((3, 4))
-  P2 = cv2.cvmat2np(P2).reshape((3, 4))
-  """
-  """
-  R1_rectified = np.zeros(shape=(3,3))
-  R2_rectified = np.zeros(shape=(3,3))
-  P1_rectified = np.zeros(shape=(3,4))
-  P2_rectified = np.zeros(shape=(3,4))
-  Q_rectified = np.zeros(shape=(4,4))
-  print "222"
-  print R1_rectified
-  #print P2_rectified
-  print np.array(cam0.K)
-  print cam0.K
-  print np.reshape(cam0.K,(3,3))
-  #print cam1.K
-  #print cam0.D
-  #print cam1.D
-
-  cv2.stereoRectify(np.reshape(cam0.K,(3,3)), np.reshape(cam1.K,(3,3)), np.reshape(cam0.D,(1,5)), np.reshape(cam1.D,(1,5)), (cam0.width, cam0.height), np.reshape(cam1.R,(3,3)), np.array(T), R1_rectified, R2_rectified, P1_rectified, P2_rectified, Q_rectified)
-  print "dfdf"
-  """
   R1_rectified = np.zeros((3,3))
   R2_rectified = np.zeros((3,3))
   P1_rectified = np.zeros((3,4))
   P2_rectified = np.zeros((3,4))
   Q_rectified = np.zeros((4,4))
-  print "222"
-  print R1_rectified
-  #print P2_rectified
-  #print np.array(cam0.K)
-  print cam0.D
-  #print np.reshape(cam0.K,(3,3))
-  #print cam1.K
-  #print cam0.D
-  #print cam1.D
 
   cv2.stereoRectify(np.reshape(cam0.K,(3,3)),np.reshape(cam0.D,(5,1)),np.reshape(cam1.K,(3,3)), np.reshape(cam1.D,(5,1)), (cam0.width, cam0.height), np.reshape(cam1.R,(3,3)), np.reshape(T,(3,1)), R1_rectified, R2_rectified, P1_rectified, P2_rectified, Q_rectified)
-  """cam0.R = np.reshape(R1_rectified,(1,9))
-  cam0.P = np.reshape(P1_rectified,(1,12))
-  cam1.R = np.reshape(R2_rectified,(1,9))
-  cam1.P = np.reshape(P2_rectified,(1,12))
-  """
-
   cam0.R = list(R1_rectified.flat)
   cam0.P = list(P1_rectified.flat)
   cam1.R = list(R2_rectified.flat)
   cam1.P = list(P2_rectified.flat)
-  print "dfdfdfdfdf"
-  print cam1.P
-  """print P1_rectified
-  print P2_rectified
-  """
   return cam0, cam1
 
 def get_image(path, filename):
@@ -212,13 +155,13 @@ def get_image(path, filename):
   splitted_filename = filename.split("_")
   seconds, nanoseconds, compressed_format = splitted_filename[1].split(".")
   nanoseconds = nanoseconds + "000"
-  frame_id = splitted_filename[0] + "_img"
+  frame_id = splitted_filename[0]
   return frame_id, int(seconds), int(nanoseconds), image
 
 # save img msg to the ROSBAG. It doesn't matter if its right or left, the difference comes with frame_ïd  
 def save_image_bag(frame_id,seq, seconds, nanoseconds, image, ros_image_config):
   ros_image = Image()
-  img_topic = "/stereo/" + frame_id + "/img_raw"
+  img_topic = "/stereo/" + frame_id + "/image_raw"
   img_config_topic = "/stereo/" + frame_id + "/camera_info"
   ros_image.header.frame_id = frame_id
   ros_image.header.seq = seq
@@ -356,7 +299,7 @@ def save_gps_RMC_bag(frame_id, seq, seconds, nanoseconds, v_linear_x, v_linear_y
 #################### gps functions #########################
 
 def get_transformation(from_frame_id, to_frame_id, transform):
-  if to_frame_id == "GPS_frame_id":
+  if to_frame_id == "gps_frame_id":
     t=transform['position_gps_imu']
     q=transform['orientation_gps_imu']
   else:
@@ -397,21 +340,26 @@ if __name__ == "__main__":
   if args.imu:
     fr = open(args.imu,"r") #information obtained from sensor
     seq = 0
-    imu_frame_id = "IMU"
+    imu_frame_id = "imu"
     global_timestamps = []
+    total_size = os.path.getsize(args.imu)
     for line in fr:
       seconds, nanoseconds, Gx, Gy, Gz, Tx, Ty, Tz = modify_imu_data(line)
       save_imu_bag(imu_frame_id, seq, seconds, nanoseconds, Gx, Gy, Gz, Tx, Ty, Tz)
       seq = seq + 1     # increment seq number
       global_timestamps.append(rospy.Time(seconds,nanoseconds))
-################## images part
+      if seq < total_size/105:
+      	print "imu processed: " + str(seq) +"\n"
+      else:
+        print "imu processed: " + str(seq) + "/" + str(total_size/105) +"\n"
+      ################## images part
   if args.images and args.calibration:
     i=0
     k=0
     camera_info = [0, 0]
     camera_info_rect = [0, 0]
-    image_r_frame_id = "camera_right"
-    image_l_frame_id = "camera_left"
+    image_r_frame_id = "right"
+    image_l_frame_id = "left"
     for i in range(0,2):
       camera_info[i],T = get_camera_info(args.calibration, "cam" + str(i))
     camera_info_rect[0],camera_info_rect[1] = rectify_images(camera_info[0], camera_info[1], T) 
@@ -419,21 +367,22 @@ if __name__ == "__main__":
     seq_left = 0
     for filename in sorted(os.listdir(args.images)): 
       camera, seconds, nanoseconds, image = get_image(args.images, filename)
-      if camera == "right_img":
+      if camera == "right":
         save_image_bag(image_r_frame_id, seq_right, seconds, nanoseconds, image, camera_info[1])      
         seq_right = seq_right + 1
         
-      if camera == "left_img":
+      if camera == "left":
         save_image_bag(image_l_frame_id, seq_left, seconds, nanoseconds, image, camera_info[0])
         seq_left = seq_left + 1
-      
       k = k+ 1
+      print "images processed: " + str(k) +"/" + str(len(os.listdir(args.images))) +"\n"
+
 ################## gps part
   if args.gps:
     fr = open(args.gps,"r") #information obtained from sensor
     seq_GGA = 0
     seq_RMC = 0
-    GPS_frame_id = "GPS-RTK"
+    GPS_frame_id = "gps-rtk"
     for line in fr:	
       if "GGA" in line:
         seconds, nanoseconds, status, service, latitude, longitude, altitude, position_covariance, position_covariance_type = get_gps_data_fromGGA(line)
@@ -447,7 +396,7 @@ if __name__ == "__main__":
         
 
 ################# transformations part
-  """
+  
   with open(args.calibration, 'r') as stream:
     try:
       data = yaml.load(stream)
@@ -458,9 +407,9 @@ if __name__ == "__main__":
 
       transforms = [
       ('base_link', imu_frame_id, T_base_link_to_imu),
-      (imu_frame_id, "image_l_frame_id" , T_cam_l_to_imu),
-      (imu_frame_id, "image_r_frame_id", T_cam_r_to_imu),
-      (imu_frame_id, "GPS_frame_id", T_GPS_to_imu) #it is already in position-orientation(Quat), no need for transf
+      (imu_frame_id, image_l_frame_id , T_cam_l_to_imu),
+      (imu_frame_id, image_r_frame_id, T_cam_r_to_imu),
+      (imu_frame_id, gps_frame_id, T_GPS_to_imu) #it is already in position-orientation(Quat), no need for transf
       ]
       tfm = TFMessage()
       for transform in transforms:
@@ -469,5 +418,5 @@ if __name__ == "__main__":
       save_tf_bag(tfm, global_timestamps)
     except yaml.YAMLError as exc:
       print(exc)
-  """
+  
   bag.close()
