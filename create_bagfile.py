@@ -299,7 +299,7 @@ def save_gps_RMC_bag(frame_id, seq, seconds, nanoseconds, v_linear_x, v_linear_y
 #################### gps functions #########################
 
 def get_transformation(from_frame_id, to_frame_id, transform):
-  if to_frame_id == "gps_frame_id":
+  if to_frame_id == "gps-rtk":
     t=transform['position_gps_imu']
     q=transform['orientation_gps_imu']
   else:
@@ -319,7 +319,7 @@ def get_transformation(from_frame_id, to_frame_id, transform):
 
 def save_tf_bag(tfm, timestamps):
   seq = 0
-  tf_topic = "/static_tf"
+  tf_topic = "tf"
   for timestamp in timestamps:
     for i in range(len(tfm.transforms)):
       tfm.transforms[i].header.seq = seq
@@ -348,10 +348,10 @@ if __name__ == "__main__":
       save_imu_bag(imu_frame_id, seq, seconds, nanoseconds, Gx, Gy, Gz, Tx, Ty, Tz)
       seq = seq + 1     # increment seq number
       global_timestamps.append(rospy.Time(seconds,nanoseconds))
-      if seq < total_size/105:
-      	print "imu processed: " + str(seq) +"\n"
+      if seq < (total_size/73):
+      	print "imu processed: " + str(seq) + "/" + str(total_size/73) +"\n"
       else:
-        print "imu processed: " + str(seq) + "/" + str(total_size/105) +"\n"
+        print "imu processed: " + str(total_size/73) + "/" + str(total_size/73) +"\n"
       ################## images part
   if args.images and args.calibration:
     i=0
@@ -382,16 +382,16 @@ if __name__ == "__main__":
     fr = open(args.gps,"r") #information obtained from sensor
     seq_GGA = 0
     seq_RMC = 0
-    GPS_frame_id = "gps-rtk"
+    gps_frame_id = "gps-rtk"
     for line in fr:	
       if "GGA" in line:
         seconds, nanoseconds, status, service, latitude, longitude, altitude, position_covariance, position_covariance_type = get_gps_data_fromGGA(line)
-        save_gps_bag(GPS_frame_id, seq_GGA, seconds, nanoseconds, status, service, latitude, longitude, altitude, position_covariance, position_covariance_type)
+        save_gps_bag(gps_frame_id, seq_GGA, seconds, nanoseconds, status, service, latitude, longitude, altitude, position_covariance, position_covariance_type)
         seq_GGA = seq_GGA + 1     # increment seq number
       
       if "RMC" in line:
         seconds, nanoseconds, v_linear_x, v_linear_y = get_gps_data_fromRMC(line)
-        save_gps_RMC_bag(GPS_frame_id, seq_RMC, seconds, nanoseconds, v_linear_x, v_linear_y)
+        save_gps_RMC_bag(gps_frame_id, seq_RMC, seconds, nanoseconds, v_linear_x, v_linear_y)
         seq_RMC = seq_RMC + 1     # increment seq number
         
 
@@ -403,13 +403,13 @@ if __name__ == "__main__":
       T_base_link_to_imu = np.eye(4, 4)
       T_cam_l_to_imu = np.matrix(data['cam0']['T_cam_imu'])
       T_cam_r_to_imu = np.matrix(data['cam1']['T_cam_imu'])
-      T_GPS_to_imu = data['gps']
+      T_gps_to_imu = data['gps']
 
       transforms = [
       ('base_link', imu_frame_id, T_base_link_to_imu),
       (imu_frame_id, image_l_frame_id , T_cam_l_to_imu),
       (imu_frame_id, image_r_frame_id, T_cam_r_to_imu),
-      (imu_frame_id, gps_frame_id, T_GPS_to_imu) #it is already in position-orientation(Quat), no need for transf
+      (imu_frame_id, gps_frame_id, T_gps_to_imu) #it is already in position-orientation(Quat), no need for transf
       ]
       tfm = TFMessage()
       for transform in transforms:
