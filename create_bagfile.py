@@ -210,7 +210,7 @@ def get_gps_data_fromGGA(line):
 
 # get latitude in degrees
   latitudeRaw = float(sentencesData[2])
-  latitudeRawDegrees = latitudeRaw // 100 # division entera
+  latitudeRawDegrees = latitudeRaw // 100 # int type division
   latitudeRawMinutes = latitudeRaw % 100
 # Get the sign of the latitude. It depends if latitude is North or South
   latitudeSign = 1
@@ -296,7 +296,44 @@ def save_gps_RMC_bag(frame_id, seq, seconds, nanoseconds, v_linear_x, v_linear_y
   ros_vel.twist.linear.y = v_linear_y
   bag.write(gps_RMC_topic, ros_vel, ros_vel.header.stamp)
 
-#################### gps functions #########################
+#################### Odometry functions ###################
+def get_odom(line):
+  sentence = line.split(" ")
+  seconds, nanoseconds = sentence[0].split(".")
+  nanoseconds = nanoseconds + "000"
+  data = sentence[2].split(",")
+  velo_1 = float(data[5])
+  angle = float(data[16])
+  direction = data[17][:-3]
+  if direction == "0": # change direction ford = 0 back = -1 to ford = 1 back = -1
+  	direction = "1"
+  d = 0.57 # diameter of the wheel in meters
+
+  velo_1_meters = velo_1 * math.pi * d * 60
+  angle_rads = math.radians(angle)
+
+  return seconds, nanoseconds, velo_1_meters, angle_rads, direction
+
+
+def calculate_odom(x, y, vel, angle, angle_old , direction, delta_t):
+
+  v_x = vel * math.sin(angle)
+  v_y = vel * math.cos(angle)
+
+  x = x + v_x * delta_t
+  y = y + v_y * delta_t
+
+  v_ang = (angle - angle_old) 
+
+  return x, y , v_x, v_y , v_ang 
+
+def calculate_orientation():
+
+def save_odom_ros():
+
+
+
+#################### TF functions #########################
 
 def get_transformation(from_frame_id, to_frame_id, transform):
   if to_frame_id == "gps-rtk":
@@ -334,6 +371,7 @@ if __name__ == "__main__":
   parser.add_argument('--images', help='folder for the images')
   parser.add_argument('--calibration', help='yaml file with the calibration')
   parser.add_argument('--gps', help='gps log file')
+  parser.add_argument('--odom', help='odometry log file with speed and angle')
   args = parser.parse_args()
   bag = rosbag.Bag('dataset.bag', 'w')
 ################## imu part
@@ -393,30 +431,47 @@ if __name__ == "__main__":
         seconds, nanoseconds, v_linear_x, v_linear_y = get_gps_data_fromRMC(line)
         save_gps_RMC_bag(gps_frame_id, seq_RMC, seconds, nanoseconds, v_linear_x, v_linear_y)
         seq_RMC = seq_RMC + 1     # increment seq number
-        
+
+################# odometry part
+
+  if args.odom:
+    fr = open(args.odom, "r")
+    seq = 0
+    x = 0
+    y = 0
+    angle_old = 0 
+    for line in fr:
+  	  seconds, nanoseconds, velo_1, angle, direction = get_odom(line)
+  	  delta_t = 0.1 # needs to be changed to the time diference between timestamps
+  	  x, y, v_x, v_y, v_ang = calculate_odom(x, y, velo_1, angle, angle_old, direction, delta_t)
+  	  #orientation = get_orientation(angle, delta_t)
+  	  #save_odom_bag(seconds, nanoseconds, v_x, v_y, v_ang, x, y, orientation)
+  	  angle_old = angle
+  	  seq = seq + 1 
 
 ################# transformations part
-  
-  with open(args.calibration, 'r') as stream:
-    try:
-      data = yaml.load(stream)
-      T_base_link_to_imu = np.eye(4, 4)
-      T_cam_l_to_imu = np.matrix(data['cam0']['T_cam_imu'])
-      T_cam_r_to_imu = np.matrix(data['cam1']['T_cam_imu'])
-      T_gps_to_imu = data['gps']
+  if args.calibration:
 
-      transforms = [
-      ('base_link', imu_frame_id, T_base_link_to_imu),
-      (imu_frame_id, image_l_frame_id , T_cam_l_to_imu),
-      (imu_frame_id, image_r_frame_id, T_cam_r_to_imu),
-      (imu_frame_id, gps_frame_id, T_gps_to_imu) #it is already in position-orientation(Quat), no need for transf
-      ]
-      tfm = TFMessage()
-      for transform in transforms:
-        tf_msg = get_transformation(transform[0],transform[1], transform[2])
-        tfm.transforms.append(tf_msg)
-      save_tf_bag(tfm, global_timestamps)
-    except yaml.YAMLError as exc:
-      print(exc)
+    with open(args.calibration, 'r') as stream:
+      try:
+        data = yaml.load(stream)
+        T_base_link_to_imu = np.eye(4, 4)
+        T_cam_l_to_imu = np.matrix(data['cam0']['T_cam_imu'])
+        T_cam_r_to_imu = np.matrix(data['cam1']['T_cam_imu'])
+        T_gps_to_imu = data['gps']
+
+        transforms = [
+        ('base_link', imu_frame_id, T_base_link_to_imu),
+        (imu_frame_id, image_l_frame_id , T_cam_l_to_imu),
+        (imu_frame_id, image_r_frame_id, T_cam_r_to_imu),
+        (imu_frame_id, gps_frame_id, T_gps_to_imu) #it is already in position-orientation(Quat), no need for transf
+        ]
+        tfm = TFMessage()
+        for transform in transforms:
+          tf_msg = get_transformation(transform[0],transform[1], transform[2])
+          tfm.transforms.append(tf_msg)
+        save_tf_bag(tfm, global_timestamps)
+      except yaml.YAMLError as exc:
+        print(exc)
   
   bag.close()
