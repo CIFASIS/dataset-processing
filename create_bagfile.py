@@ -12,11 +12,13 @@ import os
 import yaml
 import tf
 import rospy
+import matplotlib.pyplot as plt
 from sensor_msgs.msg import Imu
 from sensor_msgs.msg import Image
 from sensor_msgs.msg import CameraInfo
 from sensor_msgs.msg import NavSatFix, NavSatStatus
-from geometry_msgs.msg import TwistStamped, TransformStamped
+from geometry_msgs.msg import TwistStamped, TransformStamped, Quaternion
+from nav_msgs.msg import Odometry
 from tf2_msgs.msg import TFMessage
 
 #################### imu functions #########################
@@ -302,46 +304,103 @@ def get_odom(line):
   seconds, nanoseconds = sentence[0].split(".")
   nanoseconds = nanoseconds + "000"
   data = sentence[2].split(",")
-  velo_1 = float(data[5])
-  angle = float(data[16])
+  vel_1 = float(data[13])
+  vel_2 = float(data[9])
+  if (vel_1<70 and vel_2<70):
+    vel_lin = (vel_1+vel_2)/2
+  elif (min(vel_1, vel_2) < 50):
+    vel_lin = min(vel_1, vel_2)
+  else:
+    vel_lin = 0
+  angle = float(data[16])+3 #5.67
   direction = data[17][:-3]
-  if direction == "0": # change direction ford = 0 back = -1 to ford = 1 back = -1
-  	direction = "1"
+  if direction == "0": # change direction ford = 0 back = 1 to ford = 1 back = -1
+    direction = "1"
+  else:
+    direction = "-1"
   d = 0.57 # diameter of the wheel in meters
+  vel_lin_meters = (vel_lin * math.pi * d) / 60.0
+  angle_rads = math.radians(angle*0.20) # angle is scaled, value 100 = 20º to the right---no(value 100 = 56,25ª to the right)
 
-  velo_1_meters = velo_1 * math.pi * d * 60
-  angle_rads = math.radians(angle)
-
-  return seconds, nanoseconds, velo_1_meters, angle_rads, direction
+  return int(seconds), int(nanoseconds), vel_lin_meters, angle_rads, int(direction)
 
 
-def calculate_odom(x, y, vel, angle, angle_old , direction, delta_t):
+def calculate_odom(x, y, theta, vel, angle, delta_t, direction):
+  k=0.95#1.08 0.95
+  ang_offset = 0.0	 #0.02415 0.02
+  vel = vel * direction
+  v_x = vel * math.cos((math.pi/2.0) - theta) 
+  v_y = vel * math.sin((math.pi/2.0) - theta) 
 
-  v_x = vel * math.sin(angle)
-  v_y = vel * math.cos(angle)
+  x_next = v_x * delta_t + x
+  y_next = v_y * delta_t + y 
 
-  x = x + v_x * delta_t
-  y = y + v_y * delta_t
+  theta_next = (vel/1.6) * math.tan(k*(angle+ang_offset)) * delta_t + theta
+  v_ang = (theta_next - theta)
 
-  v_ang = (angle - angle_old) 
+  return x_next, y_next, theta_next, v_x, v_y , v_ang 
 
-  return x, y , v_x, v_y , v_ang 
+def calculate_orientation(theta):
+  quat = Quaternion()
+  quat = tf.transformations.quaternion_from_euler(0, 0, theta) # roll, pitch, yaw
+  #quat_result = tf.transformations.quaternion_multiply(quat_old, quat)
+  return quat
 
-def calculate_orientation():
+def save_odom_bag(seq, seconds, nanoseconds, v_x, v_y, v_ang, x, y, orientation):
 
-def save_odom_ros():
-
+  odom_msg = Odometry()
+  odom_msg.header.seq = seq
+  odom_msg.header.stamp.secs = seconds
+  odom_msg.header.stamp.nsecs = nanoseconds   
+  odom_msg.header.frame_id = "odom"
+  odom_topic = "/odom"
+  odom_msg.child_frame_id = "base_link"
+  odom_msg.pose.pose.position.x = x
+  odom_msg.pose.pose.position.y = y
+  odom_msg.pose.pose.position.z = 0
+  odom_msg.pose.pose.orientation.x = orientation[0]
+  odom_msg.pose.pose.orientation.y = orientation[1]
+  odom_msg.pose.pose.orientation.z = orientation[2]
+  odom_msg.pose.pose.orientation.w = orientation[3]
+  odom_msg.twist.twist.linear.x = v_x
+  odom_msg.twist.twist.linear.y = v_y
+  odom_msg.twist.twist.linear.z = 0
+  odom_msg.twist.twist.angular.x = 0
+  odom_msg.twist.twist.angular.y = 0
+  odom_msg.twist.twist.angular.z = v_ang
+  bag.write(odom_topic, odom_msg, odom_msg.header.stamp)   
 
 
 #################### TF functions #########################
 
+def inv(transform):
+    "Invert rigid body transformation matrix"
+    R = transform[0:3, 0:3]
+    t = transform[0:3, 3]
+    t_inv = -1 * R.T.dot(t)
+    transform_inv = np.eye(4)
+    transform_inv[0:3, 0:3] = R.T
+    transform_inv[0:3, 3] = list(t_inv.flat)
+    return transform_inv
+
 def get_transformation(from_frame_id, to_frame_id, transform):
-  if to_frame_id == "gps-rtk":
+  if to_frame_id == "imu":
+    t = [0, 0, 0]
+    q = tf.transformations.quaternion_from_euler(-math.pi, -1*math.pi/2, 0) # roll, pitch, yaw
+  elif to_frame_id == "gps-rtk":
     t=transform['position_gps_imu']
     q=transform['orientation_gps_imu']
+    #q_aux = tf.transformations.quaternion_from_euler(0, *math.pi/2, math.pi) # roll, pitch, yaw
+    #q = q*q_aux
+  elif to_frame_id == "odom":
+    t=transform['position_odom_baslink']
+    q = tf.transformations.quaternion_from_euler(transform['rotation_euler'][0],transform['rotation_euler'][1], transform['rotation_euler'][2]) # roll, pitch, yaw
+    q=transform['rotation_gps_imu']
   else:
-    t = transform[0:3, 3]
-    q = tf.transformations.quaternion_from_matrix(transform)
+    transform_inv = inv(transform) # for cameras, the tf needs to be inverted.
+    t = transform_inv[0:3, 3] 
+    q = tf.transformations.quaternion_from_matrix(transform_inv) 
+
   tf_msg = TransformStamped()
   tf_msg.header.frame_id = from_frame_id
   tf_msg.child_frame_id = to_frame_id
@@ -439,32 +498,81 @@ if __name__ == "__main__":
     seq = 0
     x = 0
     y = 0
-    angle_old = 0 
+    theta = 0
+    x_arr = []
+    y_arr = []
+    orientation = Quaternion()
+    odom_frame_id = "odom" 
     for line in fr:
-  	  seconds, nanoseconds, velo_1, angle, direction = get_odom(line)
-  	  delta_t = 0.1 # needs to be changed to the time diference between timestamps
-  	  x, y, v_x, v_y, v_ang = calculate_odom(x, y, velo_1, angle, angle_old, direction, delta_t)
-  	  #orientation = get_orientation(angle, delta_t)
-  	  #save_odom_bag(seconds, nanoseconds, v_x, v_y, v_ang, x, y, orientation)
-  	  angle_old = angle
-  	  seq = seq + 1 
+      seconds, nanoseconds, velo_1, angle, direction = get_odom(line)
+      delta_t = 0.1 # needs to be changed to the time diference between timestamps
+      x_next, y_next, theta_next, v_x, v_y, v_ang = calculate_odom(x, y, theta, velo_1, angle, delta_t,direction)
+      orientation = calculate_orientation(theta)
+      save_odom_bag(seq, seconds, nanoseconds, v_x, v_y, v_ang, x, y, orientation)
+      x_arr.append(x)
+      y_arr.append(y)
+      x = x_next
+      y = y_next
+      theta = theta_next 
+      seq = seq + 1 
 
+
+
+# convert data to numpy arrays
+   # pos_grnd = np.array( pos_grnd )
+
+   # xy_path = []
+
+  #x_grnd = pos_grnd[:,0]
+  #y_grnd = pos_grnd[:,1]
+  #z_grnd = pos_grnd[:,2]
+
+  #xy_path.append( (x_grnd, y_grnd) )
+
+  #labels = np.array([ "GPS-RTK" ])
+  #colors = np.array( ["black"] )
+  #ph.plotPaths2D( xy_path,  labels, colors)
+    plt.plot(x_arr, y_arr)
+    plt.xlim(-80,80)
+    plt.gca().set_aspect('equal', adjustable='box')
+  ####################################################################
+  # Show all plots
+  ####################################################################
+
+    plt.show()
+
+  ####################################################################
+  # quit script
+  ####################################################################
+
+    quit()
+
+
+
+
+
+
+
+      
 ################# transformations part
+  
   if args.calibration:
 
     with open(args.calibration, 'r') as stream:
       try:
         data = yaml.load(stream)
-        T_base_link_to_imu = np.eye(4, 4)
+        T_base_link_to_imu = np.eye(4, 4) 
         T_cam_l_to_imu = np.matrix(data['cam0']['T_cam_imu'])
         T_cam_r_to_imu = np.matrix(data['cam1']['T_cam_imu'])
         T_gps_to_imu = data['gps']
+        T_odom_to_imu = data['odom']
 
         transforms = [
         ('base_link', imu_frame_id, T_base_link_to_imu),
         (imu_frame_id, image_l_frame_id , T_cam_l_to_imu),
         (imu_frame_id, image_r_frame_id, T_cam_r_to_imu),
-        (imu_frame_id, gps_frame_id, T_gps_to_imu) #it is already in position-orientation(Quat), no need for transf
+        (imu_frame_id, gps_frame_id, T_gps_to_imu)#, #it is already in position-orientation(Quat), no need for transf
+        ('base_link', odom_frame_id, T_odom_to_imu)
         ]
         tfm = TFMessage()
         for transform in transforms:
