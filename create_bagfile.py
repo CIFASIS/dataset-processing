@@ -299,19 +299,19 @@ def save_gps_RMC_bag(frame_id, seq, seconds, nanoseconds, v_linear_x, v_linear_y
   bag.write(gps_RMC_topic, ros_vel, ros_vel.header.stamp)
 
 #################### Odometry functions ###################
-def get_odom(line):
+def get_odom(line,vel_lin_prev):
   sentence = line.split(" ")
   seconds, nanoseconds = sentence[0].split(".")
   nanoseconds = nanoseconds + "000"
   data = sentence[2].split(",")
   vel_1 = float(data[13])
   vel_2 = float(data[9])
-  if (vel_1<70 and vel_2<70):
+  if (vel_1<70 and vel_2<70): #filtrating noise problem, mesures much above 5km/h 
     vel_lin = (vel_1+vel_2)/2
-  elif (min(vel_1, vel_2) < 50):
+  elif (min(vel_1, vel_2) < 70):
     vel_lin = min(vel_1, vel_2)
   else:
-    vel_lin = 0
+    vel_lin = vel_lin_prev
   angle = float(data[16])+3 #5.67
   direction = data[17][:-3]
   if direction == "0": # change direction ford = 0 back = 1 to ford = 1 back = -1
@@ -322,7 +322,7 @@ def get_odom(line):
   vel_lin_meters = (vel_lin * math.pi * d) / 60.0
   angle_rads = math.radians(angle*0.20) # angle is scaled, value 100 = 20º to the right---no(value 100 = 56,25ª to the right)
 
-  return int(seconds), int(nanoseconds), vel_lin_meters, angle_rads, int(direction)
+  return int(seconds), int(nanoseconds), vel_lin_meters, angle_rads, int(direction), vel_lin
 
 
 def calculate_odom(x, y, theta, vel, angle, delta_t, direction):
@@ -386,16 +386,13 @@ def inv(transform):
 def get_transformation(from_frame_id, to_frame_id, transform):
   if to_frame_id == "imu":
     t = [0, 0, 0]
-    q = tf.transformations.quaternion_from_euler(-math.pi, -1*math.pi/2, 0) # roll, pitch, yaw
+    q = tf.transformations.quaternion_from_euler(-math.pi, (-1*math.pi/2)+(math.pi/6), 0) # roll, pitch, yaw
   elif to_frame_id == "gps-rtk":
-    t=transform['position_gps_imu']
-    q=transform['orientation_gps_imu']
-    #q_aux = tf.transformations.quaternion_from_euler(0, *math.pi/2, math.pi) # roll, pitch, yaw
-    #q = q*q_aux
+    t=transform['position_gps_baselink']
+    q=transform['orientation_gps_baselink']
   elif to_frame_id == "odom":
-    t=transform['position_odom_baslink']
+    t=transform['position_odom_baselink']
     q = tf.transformations.quaternion_from_euler(transform['rotation_euler'][0],transform['rotation_euler'][1], transform['rotation_euler'][2]) # roll, pitch, yaw
-    q=transform['rotation_gps_imu']
   else:
     transform_inv = inv(transform) # for cameras, the tf needs to be inverted.
     t = transform_inv[0:3, 3] 
@@ -431,8 +428,9 @@ if __name__ == "__main__":
   parser.add_argument('--calibration', help='yaml file with the calibration')
   parser.add_argument('--gps', help='gps log file')
   parser.add_argument('--odom', help='odometry log file with speed and angle')
+  parser.add_argument('--out', help='output bag file')
   args = parser.parse_args()
-  bag = rosbag.Bag('dataset.bag', 'w')
+  bag = rosbag.Bag(args.out, 'w')
 ################## imu part
   if args.imu:
     fr = open(args.imu,"r") #information obtained from sensor
@@ -502,11 +500,12 @@ if __name__ == "__main__":
     x_arr = []
     y_arr = []
     orientation = Quaternion()
-    odom_frame_id = "odom" 
+    odom_frame_id = "odom"
+    vel_lin_prev = 0 
     for line in fr:
-      seconds, nanoseconds, velo_1, angle, direction = get_odom(line)
+      seconds, nanoseconds, velo_l, angle, direction, vel_lin_prev = get_odom(line,vel_lin_prev)
       delta_t = 0.1 # needs to be changed to the time diference between timestamps
-      x_next, y_next, theta_next, v_x, v_y, v_ang = calculate_odom(x, y, theta, velo_1, angle, delta_t,direction)
+      x_next, y_next, theta_next, v_x, v_y, v_ang = calculate_odom(x, y, theta, velo_l, angle, delta_t,direction)
       orientation = calculate_orientation(theta)
       save_odom_bag(seq, seconds, nanoseconds, v_x, v_y, v_ang, x, y, orientation)
       x_arr.append(x)
@@ -514,8 +513,7 @@ if __name__ == "__main__":
       x = x_next
       y = y_next
       theta = theta_next 
-      seq = seq + 1 
-
+      seq = seq + 1
 
 
 # convert data to numpy arrays
@@ -532,20 +530,20 @@ if __name__ == "__main__":
   #labels = np.array([ "GPS-RTK" ])
   #colors = np.array( ["black"] )
   #ph.plotPaths2D( xy_path,  labels, colors)
-    plt.plot(x_arr, y_arr)
-    plt.xlim(-80,80)
-    plt.gca().set_aspect('equal', adjustable='box')
+  #  plt.plot(x_arr, y_arr)
+  #  plt.xlim(-80,80)
+  #  plt.gca().set_aspect('equal', adjustable='box')
   ####################################################################
   # Show all plots
   ####################################################################
 
-    plt.show()
+  #  plt.show()
 
   ####################################################################
   # quit script
   ####################################################################
 
-    quit()
+   # quit()
 
 
 
@@ -571,7 +569,7 @@ if __name__ == "__main__":
         ('base_link', imu_frame_id, T_base_link_to_imu),
         (imu_frame_id, image_l_frame_id , T_cam_l_to_imu),
         (imu_frame_id, image_r_frame_id, T_cam_r_to_imu),
-        (imu_frame_id, gps_frame_id, T_gps_to_imu)#, #it is already in position-orientation(Quat), no need for transf
+        ('base_link', gps_frame_id, T_gps_to_imu), #it is already in position-orientation(Quat), no need for transf
         ('base_link', odom_frame_id, T_odom_to_imu)
         ]
         tfm = TFMessage()
