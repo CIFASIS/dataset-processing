@@ -52,14 +52,14 @@ def modify_imu_data(line):
 #  Tz = float(Tz)+float(acc_offset[2])
 
 ### convertion from g to m/s²
-  Tx_meters = (Tx * 9.80665)/1000
-  Ty_meters = (Ty * 9.80665)/1000
-  Tz_meters = (Tz * 9.80665)/1000
+  Tx_meters = (Tx * 9.80665)/1000.0
+  Ty_meters = (Ty * 9.80665)/1000.0
+  Tz_meters = (Tz * 9.80665)/1000.0
 
 ### convertion from degrees to rad/s
-  Gx_rads = Gx * math.pi / 180
-  Gy_rads = Gy * math.pi / 180
-  Gz_rads = Gz * math.pi / 180
+  Gx_rads = Gx * math.pi / 180.0
+  Gy_rads = Gy * math.pi / 180.0
+  Gz_rads = Gz * math.pi / 180.0
 
   return int(seconds), int(nanoseconds), Gx_rads, Gy_rads, Gz_rads, Tx_meters, Ty_meters, Tz_meters      
 
@@ -79,10 +79,10 @@ def save_imu_bag(frame_id, seq, seconds, nanoseconds, Gx, Gy, Gz, Tx, Ty, Tz):
   ros_imu.linear_acceleration.y=Ty
   ros_imu.linear_acceleration.z=Tz
 
-  ros_imu.orientation.x = 0
-  ros_imu.orientation.y = 0
-  ros_imu.orientation.z = 0
-  ros_imu.orientation.w = 1
+  ros_imu.orientation.x = 0.0
+  ros_imu.orientation.y = 0.0
+  ros_imu.orientation.z = 0.0
+  ros_imu.orientation.w = 1.0
 
   ros_imu.angular_velocity_covariance[0] = 0.001
   ros_imu.angular_velocity_covariance[1] = 0.0
@@ -136,8 +136,8 @@ def get_camera_info(camera_info, camera):
       print(exc)
 
   return camera_info, T
-# get the image from the path and the parameters from the name
 
+# get the image from the path and the parameters from the name
 def rectify_images(cam0,cam1,T):
   R1_rectified = np.zeros((3,3))
   R2_rectified = np.zeros((3,3))
