@@ -320,8 +320,8 @@ def get_odom(line,vel_lin_prev):
     direction = "-1"
   d = 0.57 # diameter of the wheel in meters
   vel_lin_meters = (vel_lin * math.pi * d) / 60.0
-  angle_rads = math.radians(angle*0.20) # angle is scaled, value 100 = 20º to the right---no(value 100 = 56,25ª to the right)
-
+  angle_rads = math.radians(angle*0.20) # angle is scaled, value 100 = 20º to the right
+  angle_rads = angle_rads *-1 # cause angle is pos to the right, but in model pos is left
   return int(seconds), int(nanoseconds), vel_lin_meters, angle_rads, int(direction), vel_lin
 
 
@@ -329,8 +329,8 @@ def calculate_odom(x, y, theta, vel, angle, delta_t, direction):
   k=0.95#1.08 0.95
   ang_offset = 0.0	 #0.02415 0.02
   vel = vel * direction
-  v_x = vel * math.cos((math.pi/2.0) - theta) 
-  v_y = vel * math.sin((math.pi/2.0) - theta) 
+  v_x = vel * math.cos(theta)#vel * math.cos((math.pi/2.0) - theta) 
+  v_y = vel * math.sin(theta)#vel * math.sin((math.pi/2.0) - theta) 
 
   x_next = v_x * delta_t + x
   y_next = v_y * delta_t + y 
@@ -385,13 +385,13 @@ def inv(transform):
 
 def get_transformation(from_frame_id, to_frame_id, transform):
   if to_frame_id == "imu":
-    t = [0, 0, 0]
-    q = tf.transformations.quaternion_from_euler(-math.pi, (-1*math.pi/2)+(math.pi/6), 0) # roll, pitch, yaw
+    t = transform['position_imu_baselink']
+    q = tf.transformations.quaternion_from_euler(transform['rotation_euler'][0],transform['rotation_euler'][1]+(math.pi/6), transform['rotation_euler'][2]) # roll, pitch, yaw
   elif to_frame_id == "gps-rtk":
     t=transform['position_gps_baselink']
     q=transform['orientation_gps_baselink']
-  elif to_frame_id == "odom":
-    t=transform['position_odom_baselink']
+  elif from_frame_id == "odom":
+    t=transform['position_baselink_odom']
     q = tf.transformations.quaternion_from_euler(transform['rotation_euler'][0],transform['rotation_euler'][1], transform['rotation_euler'][2]) # roll, pitch, yaw
   else:
     transform_inv = inv(transform) # for cameras, the tf needs to be inverted.
@@ -410,13 +410,16 @@ def get_transformation(from_frame_id, to_frame_id, transform):
   tf_msg.transform.rotation.w = float(q[3])
   return tf_msg
 
-def save_tf_bag(tfm, timestamps):
+def save_tf_bag(tfm, timestamps, x_odom, y_odom,orientation_odom):
   seq = 0
   tf_topic = "tf"
-  for timestamp in timestamps:
+  for j,timestamp in enumerate(timestamps):
     for i in range(len(tfm.transforms)):
       tfm.transforms[i].header.seq = seq
       tfm.transforms[i].header.stamp = timestamp
+    tfm.transforms[4].transform.translation.x = x_odom[j]
+    tfm.transforms[4].transform.translation.y = y_odom[j] 
+    tfm.transforms[4].transform.rotation = orientation_odom 
     bag.write(tf_topic, tfm, timestamp)
     seq = seq +1
 #############################################
@@ -436,13 +439,11 @@ if __name__ == "__main__":
     fr = open(args.imu,"r") #information obtained from sensor
     seq = 0
     imu_frame_id = "imu"
-    global_timestamps = []
     total_size = os.path.getsize(args.imu)
     for line in fr:
       seconds, nanoseconds, Gx, Gy, Gz, Tx, Ty, Tz = modify_imu_data(line)
       save_imu_bag(imu_frame_id, seq, seconds, nanoseconds, Gx, Gy, Gz, Tx, Ty, Tz)
       seq = seq + 1     # increment seq number
-      global_timestamps.append(rospy.Time(seconds,nanoseconds))
       if seq < (total_size/73):
       	print "imu processed: " + str(seq) + "/" + str(total_size/73) +"\n"
       else:
@@ -497,24 +498,27 @@ if __name__ == "__main__":
     x = 0
     y = 0
     theta = 0
-    x_arr = []
-    y_arr = []
+    x_odom = [] #used for tf, tfor transform odom to baselink
+    y_odom = [] #used for tf, tfor transform odom to baselink
+    orientation_odom =[] #used for tf, tfor transform odom to baselink
     orientation = Quaternion()
     odom_frame_id = "odom"
-    vel_lin_prev = 0 
+    vel_lin_prev = 0
+    global_timestamps = [] # to be used as timestamps for tf 
     for line in fr:
       seconds, nanoseconds, velo_l, angle, direction, vel_lin_prev = get_odom(line,vel_lin_prev)
       delta_t = 0.1 # needs to be changed to the time diference between timestamps
       x_next, y_next, theta_next, v_x, v_y, v_ang = calculate_odom(x, y, theta, velo_l, angle, delta_t,direction)
       orientation = calculate_orientation(theta)
       save_odom_bag(seq, seconds, nanoseconds, v_x, v_y, v_ang, x, y, orientation)
-      x_arr.append(x)
-      y_arr.append(y)
+      global_timestamps.append(rospy.Time(seconds,nanoseconds))
+      x_odom.append(x) #used for tf, tfor transform odom to baselink
+      y_odom.append(y) #used for tf, tfor transform odom to baselink
+      orientation_odom.append(orientation)
       x = x_next
       y = y_next
       theta = theta_next 
       seq = seq + 1
-
 
 # convert data to numpy arrays
    # pos_grnd = np.array( pos_grnd )
@@ -530,20 +534,20 @@ if __name__ == "__main__":
   #labels = np.array([ "GPS-RTK" ])
   #colors = np.array( ["black"] )
   #ph.plotPaths2D( xy_path,  labels, colors)
-  #  plt.plot(x_arr, y_arr)
-  #  plt.xlim(-80,80)
-  #  plt.gca().set_aspect('equal', adjustable='box')
+    #plt.plot(x_odom, y_odom)
+    #plt.xlim(-100,160)
+    #plt.gca().set_aspect('equal', adjustable='box')
   ####################################################################
   # Show all plots
   ####################################################################
 
-  #  plt.show()
+    #plt.show()
 
   ####################################################################
   # quit script
   ####################################################################
 
-   # quit()
+    #quit()
 
 
 
@@ -559,24 +563,24 @@ if __name__ == "__main__":
     with open(args.calibration, 'r') as stream:
       try:
         data = yaml.load(stream)
-        T_base_link_to_imu = np.eye(4, 4) 
+        T_imu_baselink = data['imu']
         T_cam_l_to_imu = np.matrix(data['cam0']['T_cam_imu'])
         T_cam_r_to_imu = np.matrix(data['cam1']['T_cam_imu'])
-        T_gps_to_imu = data['gps']
-        T_odom_to_imu = data['odom']
+        T_gps_to_baselink = data['gps']
+        T_baselink_to_odom = data['odom']
 
         transforms = [
-        ('base_link', imu_frame_id, T_base_link_to_imu),
+        ('base_link', imu_frame_id, T_imu_baselink),
         (imu_frame_id, image_l_frame_id , T_cam_l_to_imu),
         (imu_frame_id, image_r_frame_id, T_cam_r_to_imu),
-        ('base_link', gps_frame_id, T_gps_to_imu), #it is already in position-orientation(Quat), no need for transf
-        ('base_link', odom_frame_id, T_odom_to_imu)
+        ('base_link', gps_frame_id, T_gps_to_baselink), #it is already in position-orientation(Quat), no need for transf
+        (odom_frame_id,'base_link', T_baselink_to_odom)
         ]
         tfm = TFMessage()
         for transform in transforms:
           tf_msg = get_transformation(transform[0],transform[1], transform[2])
           tfm.transforms.append(tf_msg)
-        save_tf_bag(tfm, global_timestamps)
+        save_tf_bag(tfm, global_timestamps, x_odom, y_odom, orientation_odom)
       except yaml.YAMLError as exc:
         print(exc)
   
