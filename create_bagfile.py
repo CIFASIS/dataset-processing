@@ -418,8 +418,11 @@ def save_tf_bag(tfm, timestamps, x_odom, y_odom,orientation_odom):
       tfm.transforms[i].header.seq = seq
       tfm.transforms[i].header.stamp = timestamp
     tfm.transforms[4].transform.translation.x = x_odom[j]
-    tfm.transforms[4].transform.translation.y = y_odom[j] 
-    tfm.transforms[4].transform.rotation = orientation_odom 
+    tfm.transforms[4].transform.translation.y = y_odom[j]
+    tfm.transforms[4].transform.rotation.x = orientation_odom[j][0]
+    tfm.transforms[4].transform.rotation.y = orientation_odom[j][1]
+    tfm.transforms[4].transform.rotation.z = orientation_odom[j][2]
+    tfm.transforms[4].transform.rotation.w = orientation_odom[j][3]
     bag.write(tf_topic, tfm, timestamp)
     seq = seq +1
 #############################################
