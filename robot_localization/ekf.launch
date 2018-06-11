@@ -1,4 +1,12 @@
 <launch>
+
+  <!-- set use_sim_time true for datasets-->
+  <param name="use_sim_time" value="true" />
+
+  <!-- run rosbag -->
+  <node pkg="rosbag" type="play" name="player" output="screen" args="--clock --rate 0.2 /home/taihu/Downloads/short_dataset/short.bag"/>
+
+  <!-- run robot_localization node -->
   <node pkg="robot_localization" type="ekf_localization_node" name="ekf_se" clear_params="true">
     <rosparam command="load" file="/home/taihu/src/dataset-processing/robot_localization/ekf_params.yaml" />
 
