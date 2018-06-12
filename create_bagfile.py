@@ -417,12 +417,13 @@ def save_tf_bag(tfm, timestamps, x_odom, y_odom,orientation_odom):
     for i in range(len(tfm.transforms)):
       tfm.transforms[i].header.seq = seq
       tfm.transforms[i].header.stamp = timestamp
-    tfm.transforms[4].transform.translation.x = x_odom[j]
-    tfm.transforms[4].transform.translation.y = y_odom[j]
-    tfm.transforms[4].transform.rotation.x = orientation_odom[j][0]
-    tfm.transforms[4].transform.rotation.y = orientation_odom[j][1]
-    tfm.transforms[4].transform.rotation.z = orientation_odom[j][2]
-    tfm.transforms[4].transform.rotation.w = orientation_odom[j][3]
+      # the fourth transformation is the odom->base_link transform
+#    tfm.transforms[4].transform.translation.x = x_odom[j]
+#    tfm.transforms[4].transform.translation.y = y_odom[j]
+#    tfm.transforms[4].transform.rotation.x = orientation_odom[j][0]
+#    tfm.transforms[4].transform.rotation.y = orientation_odom[j][1]
+#    tfm.transforms[4].transform.rotation.z = orientation_odom[j][2]
+#    tfm.transforms[4].transform.rotation.w = orientation_odom[j][3]
     bag.write(tf_topic, tfm, timestamp)
     seq = seq +1
 #############################################
@@ -576,8 +577,8 @@ if __name__ == "__main__":
         ('base_link', imu_frame_id, T_imu_baselink),
         (imu_frame_id, image_l_frame_id , T_cam_l_to_imu),
         (imu_frame_id, image_r_frame_id, T_cam_r_to_imu),
-        ('base_link', gps_frame_id, T_gps_to_baselink), #it is already in position-orientation(Quat), no need for transf
-        (odom_frame_id,'base_link', T_baselink_to_odom)
+        ('base_link', gps_frame_id, T_gps_to_baselink) #, #it is already in position-orientation(Quat), no need for transf
+        #(odom_frame_id,'base_link', T_baselink_to_odom)
         ]
         tfm = TFMessage()
         for transform in transforms:
