@@ -387,7 +387,7 @@ def get_transformation(from_frame_id, to_frame_id, transform):
   if to_frame_id == "imu":
     t = transform['position_imu_baselink']
     q = tf.transformations.quaternion_from_euler(transform['rotation_euler'][0],transform['rotation_euler'][1]+(math.pi/6), transform['rotation_euler'][2]) # roll, pitch, yaw
-  elif to_frame_id == "gps-rtk":
+  elif to_frame_id == "gps":
     t=transform['position_gps_baselink']
     q=transform['orientation_gps_baselink']
   elif from_frame_id == "odom":
@@ -482,7 +482,7 @@ if __name__ == "__main__":
     fr = open(args.gps,"r") #information obtained from sensor
     seq_GGA = 0
     seq_RMC = 0
-    gps_frame_id = "gps-rtk"
+    gps_frame_id = "gps"
     for line in fr:	
       if "GGA" in line:
         seconds, nanoseconds, status, service, latitude, longitude, altitude, position_covariance, position_covariance_type = get_gps_data_fromGGA(line)
