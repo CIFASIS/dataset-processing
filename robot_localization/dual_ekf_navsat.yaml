@@ -29,8 +29,8 @@ ekf_se_odom:
   imu0_config: [false,  false,  false,
                 false, false, false,
                 false, false, false,
-                true, true, true,
-                true, true, true]
+                false, false, false,
+                false, false, false]
   imu0_nodelay: false
   imu0_differential: false
   imu0_relative: true
@@ -94,7 +94,7 @@ ekf_se_map:
   world_frame: map
 
   odom0: odom
-  odom0_config: [true,  true,  false,
+  odom0_config: [false,  false,  false,
                  false, false, true,
                  true, true, false,
                  false, false, true,
@@ -120,8 +120,8 @@ ekf_se_map:
   imu0_config: [false,  false,  false,
                 false, false, false,
                 false, false, false,
-                true, true, true,
-                true, true, true]
+                false, false, false,
+                false, false, false]
   imu0_nodelay: false
   imu0_differential: false
   imu0_relative: true
@@ -177,7 +177,7 @@ navsat_transform:
 
   # Your IMU's yaw, once the magentic_declination_radians value is added to it, should report 0 when facing east. If it
   # doesn't, enter the offset here. Defaults to 0.
-  yaw_offset: 1.570796327  # IMU reads 0 facing magnetic north, not east # ESTO ES QUALQUIERA!!!!!!
+  yaw_offset: -1.570796327  # IMU reads 0 facing magnetic north, not east # ESTO ES QUALQUIERA!!!!!!
   #yaw_offset: 0.0  # IMU reads 0 facing magnetic north, not east
 
 
@@ -190,6 +190,6 @@ navsat_transform:
   # /odometry/filtered topic coming from one of robot_localization's state estimation nodes). BE CAREFUL when using this!
   # The yaw value in your odometry source *must* be world-referenced, e.g., you cannot use your odometry source for yaw
   # if your yaw data is based purely on integrated velocities. Defaults to false.
-  use_odometry_yaw: true
+  use_odometry_yaw: false
 
   wait_for_datum: false
