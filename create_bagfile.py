@@ -44,9 +44,9 @@ def modify_imu_data(line):
       gyro_offset = data_offset['imu']['gyro_offset']
     except yaml.YAMLError as exc:
       print(exc) 
-  Gx = Gx+float(gyro_offset[0])
-  Gy = Gy+float(gyro_offset[1])
-  Gz = Gz+float(gyro_offset[2])
+  Gx = Gx-float(gyro_offset[0])
+  Gy = Gy-float(gyro_offset[1])
+  Gz = Gz-float(gyro_offset[2])
 #  Tx = float(Tx)+float(acc_offset[0])
 #  Ty = float(Ty)+float(acc_offset[1])
 #  Tz = float(Tz)+float(acc_offset[2])
