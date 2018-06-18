@@ -464,13 +464,13 @@ if __name__ == "__main__":
     camera_info_rect[0],camera_info_rect[1] = rectify_images(camera_info[0], camera_info[1], T) 
     seq_right = 0
     seq_left = 0
-    for filename in sorted(os.listdir(args.images)): 
+    for filename in sorted(os.listdir(args.images)):
       camera, seconds, nanoseconds, image = get_image(args.images, filename)
       if camera == "right":
-       save_image_bag(image_r_frame_id, seq_right, seconds, nanoseconds, image, camera_info[1])      
-       seq_right = seq_right + 1
+        save_image_bag(image_r_frame_id, seq_right, seconds, nanoseconds, image, camera_info[1])
+        seq_right = seq_right + 1
            
-      if camera == "left":   
+      if camera == "left":
         save_image_bag(image_l_frame_id, seq_left, seconds, nanoseconds, image, camera_info[0])
         seq_left = seq_left + 1
 
@@ -561,7 +561,7 @@ if __name__ == "__main__":
 
       
 ################# transformations part
-  """
+
   if args.calibration:
 
     with open(args.calibration, 'r') as stream:
@@ -587,6 +587,6 @@ if __name__ == "__main__":
         save_tf_bag(tfm, global_timestamps, x_odom, y_odom, orientation_odom)
       except yaml.YAMLError as exc:
         print(exc)
-  """  
+
   bag.close()
 
