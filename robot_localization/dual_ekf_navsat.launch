@@ -17,6 +17,16 @@
   <!-- run rosbag -->
   <node pkg="rosbag" type="play" name="player" output="screen" args="--clock /home/taihu/Downloads/fulldataset/full.bag"/>
 
+  <node pkg="imu_filter_madgwick" type="imu_filter_node" name="imu_filter_madgwick" output="screen" respawn="false" >
+    <param name="fixed_frame" value="odom" />
+    <param name="use_mag" value="false" />
+    <param name="use_magnetic_field_msg" value="false" />
+    <param name="world_frame" value="enu" />
+    <param name="publish_tf" value="false" />
+
+    <remap from="imu/data_raw" to="imu"/>
+  </node>
+
 
   <rosparam command="load" file="/home/taihu/src/dataset-processing/robot_localization/dual_ekf_navsat.yaml" />
 
