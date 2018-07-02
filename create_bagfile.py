@@ -311,7 +311,7 @@ def get_odom(line,vel_lin_prev):
     vel_lin = min(vel_1, vel_2)
   else:
     vel_lin = vel_lin_prev
-  angle = float(data[16])+3 #5.67
+  angle = float(data[16])+5.67 #5.67
   direction = data[17][:-3]
   if direction == "0": # change direction ford = 0 back = 1 to ford = 1 back = -1
     direction = "1"
