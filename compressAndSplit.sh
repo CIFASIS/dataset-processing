@@ -1,6 +1,6 @@
 #!/bin/bash
 
-for i in `seq 1 1`; do
+for i in `seq 1 6`; do
     SEQ_NAME=sequence0$i
     SEQ_DIR=$SEQ_NAME/
     echo "processing sequence 0"$i
@@ -12,4 +12,11 @@ for i in `seq 1 1`; do
 
     # compress rosbag sequence
     rosbag compress $SEQ_NAME.bag
+
+    # split the compressed rosbag 
+    split --bytes=2GB -d $SEQ_NAME.bag $SEQ_NAME.bag.
+
+    # generate checksum
+    md5sum $SEQ_NAME.tar.gz > checksum.txt
+    md5sum $SEQ_NAME.bag > checksum.txt
 done
