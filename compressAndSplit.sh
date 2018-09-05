@@ -17,6 +17,6 @@ for i in `seq 1 6`; do
     split --bytes=2GB -d $SEQ_NAME.bag $SEQ_NAME.bag.
 
     # generate checksum
-    md5sum $SEQ_NAME.tar.gz > checksum.txt
-    md5sum $SEQ_NAME.bag > checksum.txt
+    md5sum $SEQ_NAME.tar.gz >> checksum.txt
+    md5sum $SEQ_NAME.bag >> checksum.txt
 done
