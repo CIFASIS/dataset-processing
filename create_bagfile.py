@@ -169,7 +169,7 @@ def save_image_bag(frame_id,seq, seconds, nanoseconds, image, ros_image_config):
   ros_image = Image()
   img_topic = "/stereo/" + frame_id + "/image_raw"
   img_config_topic = "/stereo/" + frame_id + "/camera_info"
-  ros_image.header.frame_id = frame_id
+  ros_image.header.frame_id = "/stereo/" + frame_id
   ros_image.header.seq = seq
   ros_image.header.stamp.secs = seconds
   ros_image.header.stamp.nsecs = nanoseconds
@@ -179,7 +179,10 @@ def save_image_bag(frame_id,seq, seconds, nanoseconds, image, ros_image_config):
   ros_image.encoding = "bgr8"
   ros_image.data = image.tostring()
 
-  ros_image_config.header.frame_id = frame_id + "_camera_info"
+  # check http://wiki.ros.org/image_pipeline/FrameConventions
+  # left and right camera_info should have the same frame_id than the left optical frame
+  # we DO NOT follow this convention!!!!
+  ros_image_config.header.frame_id = frame_id
   ros_image_config.header.stamp = ros_image.header.stamp
   ros_image_config.header.seq = seq
   bag.write(img_topic, ros_image, ros_image.header.stamp) # write image in bag
@@ -389,7 +392,7 @@ def inv(transform):
 def get_transformation(from_frame_id, to_frame_id, transform):
   if to_frame_id == "imu":
     t = transform['position_imu_baselink']
-    q = tf.transformations.quaternion_from_euler(transform['rotation_euler'][0],transform['rotation_euler'][1]+(math.pi/6), transform['rotation_euler'][2]) # roll, pitch, yaw
+    q=transform['rotation_imu_baselink']
   elif to_frame_id == "gps":
     t=transform['position_gps_baselink']
     q=transform['orientation_gps_baselink']
@@ -463,8 +466,8 @@ if __name__ == "__main__":
     k=0
     camera_info = [0, 0]
     camera_info_rect = [0, 0]
-    image_r_frame_id = "right"
     image_l_frame_id = "left"
+    image_r_frame_id = "right"
     for i in range(0,2):
       camera_info[i],T = get_camera_info(args.calibration, "cam" + str(i))
     camera_info_rect[0],camera_info_rect[1] = rectify_images(camera_info[0], camera_info[1], T) 
