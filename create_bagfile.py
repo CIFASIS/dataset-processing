@@ -2,10 +2,11 @@
 # -*- coding: utf-8 -*-
 
 ## will replace dataset2bag
-import rosbag
-import argparse
+import sys
 import math
 import numpy as np
+import argparse
+import rosbag
 import cv2
 #from cv2 import cv2util
 import os
@@ -451,10 +452,12 @@ if __name__ == "__main__":
       save_imu_bag(imu_frame_id, seq, seconds, nanoseconds, Gx, Gy, Gz, Tx, Ty, Tz)
       seq = seq + 1     # increment seq number
       if seq < (total_size/73):
-      	print "imu processed: " + str(seq) + "/" + str(total_size/73) +"\n"
+        print "\r imu processed: " + str(seq) + "/" + str(total_size/73),
       else:
-        print "imu processed: " + str(total_size/73) + "/" + str(total_size/73) +"\n"
-      ################## images part
+        print "\r imu processed: " + str(total_size/73) + "/" + str(total_size/73),
+      sys.stdout.flush() # flush terminal output
+    print "" # print required to keep last printed line
+################## images part
   if args.images and args.calibration:
     i=0
     k=0
@@ -478,8 +481,9 @@ if __name__ == "__main__":
         seq_left = seq_left + 1
 
       k = k+ 1
-      print "images processed: " + str(k) +"/" + str(len(os.listdir(args.images))) +"\n"
-
+      print "\r images processed: " + str(k) +"/" + str(len(os.listdir(args.images))),
+      sys.stdout.flush() # flush terminal output
+    print "" # print required to keep last printed line
 ################## gps part
   if args.gps:
     fr = open(args.gps,"r") #information obtained from sensor
