@@ -94,6 +94,9 @@ def save_imu_bag(frame_id, seq, seconds, nanoseconds, Gx, Gy, Gz, Tx, Ty, Tz):
   ros_imu.angular_velocity_covariance[7] = 0.0
   ros_imu.angular_velocity_covariance[8] = 0.001
   ros_imu.linear_acceleration_covariance = ros_imu.orientation_covariance = ros_imu.angular_velocity_covariance
+  ros_imu.orientation_covariance[0] = -1
+  ros_imu.orientation_covariance[4] = 0
+  ros_imu.orientation_covariance[8] = 0
   #for the orientation we need to put -1 in the first value of covariance to show we do not have orientation
 
   bag.write(imu_topic, ros_imu, ros_imu.header.stamp)
