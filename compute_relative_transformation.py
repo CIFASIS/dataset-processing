@@ -109,94 +109,12 @@ R_cam_imu = np.array([[0.009471441780975032, 0.9984567420628084, 0.0547213488495
                       [-0.9939081748565041, 0.0033909183804303744, 0.11015916496574298],
                       [0.10980360533243941, -0.055431362078334365, 0.9924064350628417]])
 
-#print ("quaternion represetend as [w,x,y,z]")
-#for R_baselink_cam in [R1_baselink_cam, R2_baselink_cam, R3_baselink_cam, R4_baselink_cam, R5_baselink_cam, R6_baselink_cam]:
-#  R_baselink_imu = R_baselink_cam * R_cam_imu
-#  # quaternion represetend as [w,x,y,z]
-#  q = tf.quaternion_from_matrix(R_baselink_imu)
-#  print (q)
-
-
-# show rotation from camera to imu
-R_imu_cam = inv(R_cam_imu)
-# quaternion represetend as [w,x,y,z]
-q_unordered = tf.quaternion_from_matrix(R_imu_cam)
-# reprensent quaternion as [x,y,z,w]
-q = np.array([q_unordered[1], q_unordered[2], q_unordered[3], q_unordered[0]])
-print ("q_imu_cam")
-print (q)
-
-# show rotation from camera to base_link
-# quaternion represetend as [w,x,y,z]
-q_unordered = tf.quaternion_from_matrix(R4_baselink_cam)
-# reprensent quaternion as [x,y,z,w]
-q = np.array([q_unordered[1], q_unordered[2], q_unordered[3], q_unordered[0]])
-print ("q_baselink_camera")
-print (q)
-
-# show rotation from imu to base_link
-R4_baselink_imu = R4_baselink_cam * R_cam_imu
-q_base_cam = tf.quaternion_from_matrix(R4_baselink_cam)
-q_cam_imu = tf.quaternion_from_matrix(R_cam_imu)
-q_unordered = tf.quaternion_multiply(q_base_cam, q_cam_imu)
-
-
-# quaternion represetend as [w,x,y,z]
-#q_unordered = tf.quaternion_from_matrix(R4_baselink_imu)
-# reprensent quaternion as [x,y,z,w]
-q = np.array([q_unordered[1], q_unordered[2], q_unordered[3], q_unordered[0]])
 print ("q_baselink_imu")
-print (q)
-
-
-####################################################################################
-## Artifitial transformations for debugging
-####################################################################################
-
-# rotation from camera to imu
-q_unordered = tf.quaternion_about_axis(math.pi/2.0, [0, 0, 1]) # turn +90 degrees in Z-axis
-R_imu_cam = tf.quaternion_matrix(q_unordered)
-# reprensent quaternion as [x,y,z,w]
-q = np.array([q_unordered[1], q_unordered[2], q_unordered[3], q_unordered[0]])
-print ("q_imu_camera")
-print (q)
-
-# rotation from camera to base_link
-q_unordered = tf.quaternion_about_axis(-math.pi/2.0, [0, 0, 1]) # turn -90 degrees in Z-axis
-q_unordered = tf.quaternion_multiply(tf.quaternion_about_axis(math.pi/2.0, [0, 1, 0]), q_unordered) # turn +90 degrees in Y-axis
-R_base_cam = tf.quaternion_matrix(q_unordered)
-# reprensent quaternion as [x,y,z,w]
-q = np.array([q_unordered[1], q_unordered[2], q_unordered[3], q_unordered[0]])
-print ("q_baselink_camera")
-print (q)
-
-# rotation from imu to base_link (USING QUATERNIONGS ONLY)
-q_unordered = tf.quaternion_about_axis(-math.pi/2.0, [0, 0, 1]) # turn -90 degrees in Z-axis
-q_unordered = tf.quaternion_multiply(tf.quaternion_about_axis(-math.pi/2.0, [0, 0, 1]), q_unordered) # turn -90 degrees in Y-axis
-q_unordered = tf.quaternion_multiply(tf.quaternion_about_axis(math.pi/2.0, [0, 1, 0]), q_unordered) # turn +90 degrees in Y-axis
-# reprensent quaternion as [x,y,z,w]
-q = np.array([q_unordered[1], q_unordered[2], q_unordered[3], q_unordered[0]])
-print ("q_baselink_imu")
-print (q)
-
-# rotation from imu to base_link
-R_base_imu = R_base_cam * inv(R_imu_cam)
-q_base_imu = tf.quaternion_from_matrix(R_base_imu)
-q_base_cam = tf.quaternion_from_matrix(R_base_cam)
-q_cam_imu = tf.quaternion_from_matrix(inv(R_imu_cam))
-q_unordered = tf.quaternion_multiply(q_base_cam, q_cam_imu)
-# reprensent quaternion as [x,y,z,w]
-q = np.array([q_unordered[1], q_unordered[2], q_unordered[3], q_unordered[0]])
-print ("q_baselink_imu")
-print(q_base_imu)
-print (q_unordered)
-
-#print (q)
-
-
-
-
-
-
-
-
+print ("quaternion represetend as [w,x,y,z]")
+for R_baselink_cam in [R1_baselink_cam, R2_baselink_cam, R3_baselink_cam, R4_baselink_cam, R5_baselink_cam, R6_baselink_cam]:
+  R_baselink_imu = np.dot(R_baselink_cam, R_cam_imu)
+  # quaternion represetend as [w,x,y,z]
+  q_unordered = tf.quaternion_from_matrix(R_baselink_imu)
+  # reprensent quaternion as [x,y,z,w]
+  q = np.array([q_unordered[1], q_unordered[2], q_unordered[3], q_unordered[0]])
+  print (q)
