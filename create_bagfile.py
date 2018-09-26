@@ -26,7 +26,7 @@ from tf2_msgs.msg import TFMessage
 
 # get parameters from the name of the file and modify imu values to correct error and mesure units
 def modify_imu_data(line):
-#since number of characters of the values may change lines are splitted usings spaces as delimiters	
+  #since number of characters of the values may change lines are splitted usings spaces as delimiters
   splitted_line = line.split(" ")
   seconds,nanoseconds = splitted_line[0].split(".")
   nanoseconds = nanoseconds + "000"
@@ -48,9 +48,9 @@ def modify_imu_data(line):
   Gx = Gx-float(gyro_offset[0])
   Gy = Gy-float(gyro_offset[1])
   Gz = Gz-float(gyro_offset[2])
-#  Tx = float(Tx)+float(acc_offset[0])
-#  Ty = float(Ty)+float(acc_offset[1])
-#  Tz = float(Tz)+float(acc_offset[2])
+  Tx = float(Tx)+float(acc_offset[0])
+  Ty = float(Ty)+float(acc_offset[1])
+  Tz = float(Tz)+float(acc_offset[2])
 
 ### convertion from g to m/s²
   Tx_meters = (Tx * 9.80665)/1000.0
@@ -125,7 +125,7 @@ def get_camera_info(camera_info, camera):
       
       k1,k2,t1,t2 = data[camera]['distortion_coeffs']
       camera_info.D = [k1,k2,t1,t2,0]
-#if cam0 then it's left camera,so R = identity and T = [0 0 0]
+      #if cam0 then it's left camera,so R = identity and T = [0 0 0]
       if camera == "cam0":
         camera_info.R[0:3] = [1, 0, 0]
         camera_info.R[3:6] = [0, 1, 0]
@@ -197,7 +197,7 @@ def get_gps_data_fromGGA(line):
   nanoseconds = timestamp.split('.')[1] + "000" 
   sentencesData = line.split(',')
 
-#get status and service
+  #get status and service
   gps_qual = int(sentencesData[6])
   if gps_qual == 0:
     status = NavSatStatus.STATUS_NO_FIX
@@ -208,19 +208,19 @@ def get_gps_data_fromGGA(line):
   elif gps_qual in (4, 5):
     status = NavSatStatus.STATUS_GBAS_FIX
   elif gps_qual == 9:
-# Support specifically for NOVATEL OEM4 recievers which report WAAS fix as 9
-# http://www.novatel.com/support/known-solutions/which-novatel-position-types-correspond-to-the-gga-quality-indicator/
+    # Support specifically for NOVATEL OEM4 recievers which report WAAS fix as 9
+    # http://www.novatel.com/support/known-solutions/which-novatel-position-types-correspond-to-the-gga-quality-indicator/
     status = NavSatStatus.STATUS_SBAS_FIX
   else:
     status = NavSatStatus.STATUS_NO_FIX
   service = NavSatStatus.SERVICE_GPS	
 
 
-# get latitude in degrees
+  # get latitude in degrees
   latitudeRaw = float(sentencesData[2])
   latitudeRawDegrees = latitudeRaw // 100 # int type division
   latitudeRawMinutes = latitudeRaw % 100
-# Get the sign of the latitude. It depends if latitude is North or South
+  # Get the sign of the latitude. It depends if latitude is North or South
   latitudeSign = 1
   latitudeCartidnalDirection = sentencesData[3]
   if latitudeCartidnalDirection == 'S':
@@ -242,10 +242,10 @@ def get_gps_data_fromGGA(line):
 
   longitude = longitudeSign * (longitudeRawDegrees + longitudeRawMinutes / 60.0)
 
-# get altitude in meters (9 is above sea level, 11 is sea level above ellipsoide) with 0 reference at the ellipsoide
+  # get altitude in meters (9 is above sea level, 11 is sea level above ellipsoide) with 0 reference at the ellipsoide
   altitude = float(sentencesData[9]) + float (sentencesData[11])
 
-# get covariance using Horizontal dilution of position 
+  # get covariance using Horizontal dilution of position
   hdop = float(sentencesData[8])
   position_covariance = [0,0,0,0,0,0,0,0,0]
   position_covariance[0] = hdop ** 2
@@ -418,7 +418,7 @@ def get_transformation(from_frame_id, to_frame_id, transform):
 
 def save_tf_bag(tfm, timestamps, x_odom, y_odom,orientation_odom):
   seq = 0
-  tf_topic = "tf"
+  tf_topic = "tf_static"
   for j,timestamp in enumerate(timestamps):
     for i in range(len(tfm.transforms)):
       tfm.transforms[i].header.seq = seq
