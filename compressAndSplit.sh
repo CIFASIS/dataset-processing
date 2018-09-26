@@ -6,7 +6,7 @@ DATASET_DIR=$HOME/datasets/robot_desmalezador
 for i in `seq 1 6`; do
     SEQ_NAME=sequence0$i
     SEQ_DIR=$DATASET_DIR/$SEQ_NAME
-    echo "Processing $SEQ_NAME in directory " $DATASET_DIR/
+    echo "Processing $SEQ_NAME in directory $DATASET_DIR/"
 
     # generate rosbag
     echo "Creating $OUTPUT_DIR/$SEQ_NAME.bag"
