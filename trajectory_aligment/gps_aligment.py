@@ -35,9 +35,9 @@ if __name__ == "__main__":
   T_gps_b = inv(T_b_gps)
 
   f_tray = open(args.tray,"r")
-  fw = open(args.out,"w+")
-  frot = open (args.rot,"r")
-  for line in frot:
+  f_rot = open (args.rot,"r")
+  f_out = open(args.out,"w+")
+  for line in f_rot:
     line = line.replace(' [ ','')
     line = line.replace(' [','')
     line = line.replace('[ ','')
@@ -64,4 +64,4 @@ if __name__ == "__main__":
 
     pos_baselink = np.matmul(np.matmul(T_b_gps,pos_gps),T_gps_b)
     
-    fw.write(data[0] + ' ' + str(pos_baselink[0,3])+ ' ' + str(pos_baselink[1,3])  + "\r\n") 
+    f_out.write(data[0] + ' ' + str(pos_baselink[0,3])+ ' ' + str(pos_baselink[1,3])  + "\r\n")
