@@ -25,9 +25,9 @@ if __name__ == "__main__":
 
   rot_file = []
 
-
+  # set transformation from gps to base_link coordinate system
+  # this transformation was measured by hand
   T_b_gps = np.identity(4)
-
   T_b_gps[0,3] = 1.80070337
   T_b_gps[1,3] = -0.02982362
   T_b_gps[2,3] = 1.59345719
