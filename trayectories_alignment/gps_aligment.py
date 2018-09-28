@@ -17,7 +17,7 @@ def inv(transform):
 
 if __name__ == "__main__":
   
-  parser = argparse.ArgumentParser(description='Script that takes a trayectorie and perform a rotation based on a matrix supplied')
+  parser = argparse.ArgumentParser(description='Script that takes a trajectory and perform a rotation based on a matrix supplied')
   parser.add_argument('--tray', help='trayectorie to rotate')
   parser.add_argument('--rot', help='file with the R matrix')
   parser.add_argument('--out', help='aligned trayectorie')
