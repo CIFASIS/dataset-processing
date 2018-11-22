@@ -65,3 +65,6 @@ if __name__ == "__main__":
     pos_baselink = np.matmul(np.matmul(T_b_gps,pos_gps),T_gps_b)
     
     f_out.write(data[0] + ' ' + str(pos_baselink[0,3])+ ' ' + str(pos_baselink[1,3])  + "\r\n")
+
+  # close file
+  f_out.close()
