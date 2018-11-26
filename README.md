@@ -19,6 +19,13 @@ Podemos probar con ORB-SLAM.
 
 Transformar datos de GT a formato EuRoC y a KITTI para poder comparar fácilmente (hacer script)
 
+Utilizar software de ploteo EVO: https://github.com/MichaelGrupp/evo
+Instalarlo para python 2.7 para esto hacer:
+sudo pip2.7 install evo --upgrade --no-binary evo
+
+
+
+
 
 
 
