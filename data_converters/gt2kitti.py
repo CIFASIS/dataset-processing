@@ -15,10 +15,17 @@ def main():
     '--dataset-gt',
     required=True,
     help=("Ground-Truth positions (format: timestamp x y z)"))
+  parser.add_argument(
+      '-o',
+      '--output',
+      default="output.txt",
+      required=False,
+      help=("Path to the top-level input directory for conversion"))
 
   # parse cmdline args
   parser_args = vars(parser.parse_args())
   in_dataset_gt_file = parser_args["dataset_gt"]
+  out_gt_kitti_format = parser_args["output"]
 
   # Ground-Truth file
   # Convert it to a
@@ -29,7 +36,7 @@ def main():
       logger.info("moving the Ground-Truth information...")
 
       with open(in_dataset_gt_file) as inputFile:
-        with open('output.txt', 'w') as outputFile:
+        with open(out_gt_kitti_format, 'w') as outputFile:
           writer = csv.writer(outputFile, delimiter=' ')
           reader = csv.reader(inputFile, delimiter=' ')
           for line in reader:
