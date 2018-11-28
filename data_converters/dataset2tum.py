@@ -12,7 +12,7 @@ def main():
   """Main."""
 
   parser = argparse.ArgumentParser()
-  parser.description = "Convert dataset ground-truth positions to EuRoC format"
+  parser.description = "Convert dataset ground-truth positions to TUM format"
   parser.add_argument(
     '-g',
     '--dataset-gt',
@@ -21,7 +21,7 @@ def main():
   parser.add_argument(
       '-o',
       '--output',
-      default="gt_euroc.txt",
+      default="gt_tum.txt",
       required=False,
       help=("Output file"))
 
@@ -41,22 +41,20 @@ def main():
       with open(in_dataset_gt_file) as inputFile:
         reader = csv.reader(inputFile, delimiter=' ')
         with open(out_new_format, 'w') as outputFile:
-          writer = csv.writer(outputFile, delimiter=',')
+          writer = csv.writer(outputFile, delimiter=' ')
           for line in reader:
-            # convert seconds to nanoseconds
-            timestamp = float(line[0]) * 1000000000 # we are losing precision here
+
+            timestamp = float(line[0])
             x_pos = line[1]
             y_pos = line[2]
             z_pos = line[3]
 
-            # identity quaternion
-            quaternionOrientation = [1, 0.0, 0.0, 0.0]
-            linearVelocity = [0.0, 0.0, 0.0]
-            biasGyros = [0.0, 0.0, 0.0]
-            biasAccelerometer = [0.0, 0.0, 0.0]
+            # TUM format [x, y, z, w] identity quaternion
+            quaternionOrientation = [0.0, 0.0, 0.0, 1.0]
 
-            # create euroc pose with identity rotation matrix
-            newRow = [timestamp, x_pos, y_pos, z_pos] + quaternionOrientation + linearVelocity + biasGyros + biasAccelerometer
+            # create TUM pose with identity rotation matrix
+            newRow = [timestamp, x_pos, y_pos, z_pos] + quaternionOrientation
+
             writer.writerow(newRow)
 
       # close files
