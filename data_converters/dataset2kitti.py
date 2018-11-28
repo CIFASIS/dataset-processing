@@ -18,7 +18,7 @@ def main():
   parser.add_argument(
       '-o',
       '--output',
-      default="output.txt",
+      default="gt_kitti.txt",
       required=False,
       help=("Path to the top-level input directory for conversion"))
 
