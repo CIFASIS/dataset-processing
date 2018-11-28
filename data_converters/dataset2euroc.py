@@ -9,7 +9,7 @@ def main():
   """Main."""
 
   parser = argparse.ArgumentParser()
-  parser.description = "Convert dataset ground-truth positions to KITTI format"
+  parser.description = "Convert dataset ground-truth positions to EuRoC format"
   parser.add_argument(
     '-g',
     '--dataset-gt',
@@ -18,14 +18,14 @@ def main():
   parser.add_argument(
       '-o',
       '--output',
-      default="gt_kitti.txt",
+      default="gt_euroc.txt",
       required=False,
       help=("Output file"))
 
   # parse cmdline args
   parser_args = vars(parser.parse_args())
   in_dataset_gt_file = parser_args["dataset_gt"]
-  out_gt_kitti_format = parser_args["output"]
+  out_new_format = parser_args["output"]
 
   # Ground-Truth file
   # Convert it to a
@@ -36,17 +36,24 @@ def main():
       logger.info("moving the Ground-Truth information...")
 
       with open(in_dataset_gt_file) as inputFile:
-        with open(out_gt_kitti_format, 'w') as outputFile:
-          writer = csv.writer(outputFile, delimiter=' ')
-          reader = csv.reader(inputFile, delimiter=' ')
+        reader = csv.reader(inputFile, delimiter=' ')
+        with open(out_new_format, 'w') as outputFile:
+          writer = csv.writer(outputFile, delimiter=',')
           for line in reader:
-            timestamp = line[0]
+            # convert seconds to nanoseconds
+            timestamp = float(line[0]) * 1000000000 # we are losing precision here
             x_pos = line[1]
             y_pos = line[2]
             z_pos = line[3]
 
-            # create kitti pose with identity rotation matrix
-            newRow = [1.0, 0.0 , 0.0, x_pos, 0.0, 1.0, 0.0, y_pos, 0.0, 0.0, 1.0, z_pos]
+            # identity quaternion
+            quaternionOrientation = [1, 0.0, 0.0, 0.0]
+            linearVelocity = [0.0, 0.0, 0.0]
+            biasGyros = [0.0, 0.0, 0.0]
+            biasAccelerometer = [0.0, 0.0, 0.0]
+
+            # create euroc pose with identity rotation matrix
+            newRow = [timestamp, x_pos, y_pos, z_pos] + quaternionOrientation + linearVelocity + biasGyros + biasAccelerometer
             writer.writerow(newRow)
 
       # close files
