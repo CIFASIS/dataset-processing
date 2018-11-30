@@ -32,6 +32,8 @@ rosrun ORB_SLAM2 Stereo /home/taihu/catkin_ws/src/ORB_SLAM2/Vocabulary/ORBvoc.tx
 
 la trayectoria correcta esta en: FrameTrajectory_TUM_Format.txt
 
+evo_traj tum --ref=/home/taihu/src/dataset-processing/data_converters/gt_tum_02.txt ./FrameTrajectory_TUM_Format.txt -p --plot_mode=xyz --align --n_to_align 10
+
 
 
 
