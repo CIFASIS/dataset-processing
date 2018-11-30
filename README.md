@@ -24,6 +24,17 @@ Instalarlo para python 2.7 para esto hacer:
 sudo pip2.7 install evo --upgrade --no-binary evo
 
 
+# RUN ORB-SLAM2 in Rosario dataset
+
+rosbag play --clock sequence01.bag /stereo/left/image_raw:=/camera/left/image_raw /stereo/right/image_raw:=/camera/right/image_raw
+rosrun ORB_SLAM2 Stereo /home/taihu/catkin_ws/src/ORB_SLAM2/Vocabulary/ORBvoc.txt /home/taihu/src/dataset-processing/slam_configs/orbslam.yaml true
+
+la trayectoria correcta esta en: FrameTrajectory_TUM_Format.txt
+
+
+
+
+
 
 
 
