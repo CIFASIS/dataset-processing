@@ -1,14 +1,10 @@
 import argparse
-import numpy as np
-import math
 import utm
 from sensor_msgs.msg import NavSatFix, NavSatStatus
 
 
 def get_gps_data_fromGGA(line):
-    timestamp = line.split(' ')[0]
-    seconds = timestamp.split('.')[0]
-    nanoseconds = timestamp.split('.')[1] + "000"
+    timestamp = line.split(' ')[0] + "000"  # nanoseconds precision
     sentencesData = line.split(',')
 
     #get status and service
@@ -72,9 +68,9 @@ def get_gps_data_fromGGA(line):
     position_covariance[8] = (2 * hdop) ** 2
     position_covariance_type = NavSatFix.COVARIANCE_TYPE_APPROXIMATED
 
-    return int(seconds), int(nanoseconds), status, service, latitude, longitude, altitude, position_covariance, position_covariance_type
+    return timestamp, status, service, latitude, longitude, altitude, position_covariance, position_covariance_type
 
-def get_position(latitude, longitude, altitude, gps_secs,gps_nsecs):
+def get_position(latitude, longitude, altitude):
 
     global initialx
     global initialy
@@ -90,9 +86,8 @@ def get_position(latitude, longitude, altitude, gps_secs,gps_nsecs):
     gps_x = (x-initialx)
     gps_y = (y-initialy)
     gps_z = (z-initialz)
-    timestamp = str(gps_secs) + "."+ str(gps_nsecs)
 
-    return timestamp, gps_x ,gps_y, gps_z 
+    return gps_x, gps_y, gps_z
 
 if __name__ == '__main__':
 
@@ -122,8 +117,6 @@ if __name__ == '__main__':
     seq_GGA = 0
     for line in f_in:
         if "GGA" in line:
-            seconds, nanoseconds, status, service, latitude, longitude, altitude, position_covariance, position_covariance_type = get_gps_data_fromGGA(
-                line)
-            timestamp, x, y, z = get_position(longitude, latitude, altitude, seconds, nanoseconds)
-            f_out.write(str(timestamp) + ' ' + str(x) + ' ' + str(y) + ' ' + str(
-                z) + ' ' + "0" + ' ' + "0" + ' ' + "0" + ' ' + "1" + "\r\n")
+            timestamp, status, service, latitude, longitude, altitude, position_covariance, position_covariance_type = get_gps_data_fromGGA(line)
+            x, y, z = get_position(longitude, latitude, altitude)
+            f_out.write(str(timestamp) + ' ' + str(x) + ' ' + str(y) + ' ' + str(z) + ' ' + "0" + ' ' + "0" + ' ' + "0" + ' ' + "1" + "\r\n")
