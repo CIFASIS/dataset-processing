@@ -148,8 +148,10 @@ def rectify_images(cam0,cam1,T):
   P1_rectified = np.zeros((3,4))
   P2_rectified = np.zeros((3,4))
   Q_rectified = np.zeros((4,4))
+  flags = cv2.CALIB_ZERO_DISPARITY
+  alpha = -1
 
-  cv2.stereoRectify(np.reshape(cam0.K,(3,3)),np.reshape(cam0.D,(5,1)),np.reshape(cam1.K,(3,3)), np.reshape(cam1.D,(5,1)), (cam0.width, cam0.height), np.reshape(cam1.R,(3,3)), np.reshape(T,(3,1)), R1_rectified, R2_rectified, P1_rectified, P2_rectified, Q_rectified)
+  cv2.stereoRectify(np.reshape(cam0.K,(3,3)),np.reshape(cam0.D,(5,1)),np.reshape(cam1.K,(3,3)), np.reshape(cam1.D,(5,1)), (cam0.width, cam0.height), np.reshape(cam1.R,(3,3)), np.reshape(T,(3,1)), R1_rectified, R2_rectified, P1_rectified, P2_rectified, Q_rectified, flags, alpha)
   cam0.R = list(R1_rectified.flat)
   cam0.P = list(P1_rectified.flat)
   cam1.R = list(R2_rectified.flat)
