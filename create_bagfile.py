@@ -342,7 +342,7 @@ def calculate_odom(x, y, theta, vel, angle, delta_t, direction):
   y_next = v_y * delta_t + y 
 
   theta_next = (vel/1.6) * math.tan(k*(angle+ang_offset)) * delta_t + theta
-  v_ang = (theta_next - theta)
+  v_ang = (theta_next - theta) / delta_t
 
   return x_next, y_next, theta_next, v_x, v_y , v_ang 
 
