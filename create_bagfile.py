@@ -142,7 +142,7 @@ def get_camera_info(camera_info, camera):
   return camera_info, T
 
 # get the image from the path and the parameters from the name
-def rectify_images(cam0,cam1,T):
+def rectify_images(cam0, cam1, T):
   R1_rectified = np.zeros((3,3))
   R2_rectified = np.zeros((3,3))
   P1_rectified = np.zeros((3,4))
@@ -151,7 +151,7 @@ def rectify_images(cam0,cam1,T):
   flags = cv2.CALIB_ZERO_DISPARITY
   alpha = -1
 
-  cv2.stereoRectify(np.reshape(cam0.K,(3,3)),np.reshape(cam0.D,(5,1)),np.reshape(cam1.K,(3,3)), np.reshape(cam1.D,(5,1)), (cam0.width, cam0.height), np.reshape(cam1.R,(3,3)), np.reshape(T,(3,1)), R1_rectified, R2_rectified, P1_rectified, P2_rectified, Q_rectified, flags, alpha)
+  cv2.stereoRectify(np.reshape(cam0.K,(3,3)), np.reshape(cam0.D,(5,1)), np.reshape(cam1.K,(3,3)), np.reshape(cam1.D,(5,1)), (cam0.width, cam0.height), np.reshape(cam1.R,(3,3)), np.reshape(T,(3,1)), R1_rectified, R2_rectified, P1_rectified, P2_rectified, Q_rectified, flags, alpha)
   cam0.R = list(R1_rectified.flat)
   cam0.P = list(P1_rectified.flat)
   cam1.R = list(R2_rectified.flat)
@@ -471,21 +471,23 @@ if __name__ == "__main__":
     image_l_frame_id = "left"
     image_r_frame_id = "right"
     for i in range(0,2):
-      camera_info[i],T = get_camera_info(args.calibration, "cam" + str(i))
-    camera_info_rect[0],camera_info_rect[1] = rectify_images(camera_info[0], camera_info[1], T) 
+      camera_info[i], T = get_camera_info(args.calibration, "cam" + str(i))
+    camera_info_rect[0], camera_info_rect[1] = rectify_images(camera_info[0], camera_info[1], T)
     seq_right = 0
     seq_left = 0
     for filename in sorted(os.listdir(args.images)):
+
       camera, seconds, nanoseconds, image = get_image(args.images, filename)
-      if camera == "right":
-        save_image_bag(image_r_frame_id, seq_right, seconds, nanoseconds, image, camera_info[1])
-        seq_right = seq_right + 1
-           
+
       if camera == "left":
-        save_image_bag(image_l_frame_id, seq_left, seconds, nanoseconds, image, camera_info[0])
+        save_image_bag(image_l_frame_id, seq_left, seconds, nanoseconds, image, camera_info_rect[0])
         seq_left = seq_left + 1
 
-      k = k+ 1
+      if camera == "right":
+        save_image_bag(image_r_frame_id, seq_right, seconds, nanoseconds, image, camera_info_rect[1])
+        seq_right = seq_right + 1
+
+      k = k + 1
       print "\r images processed: " + str(k) +"/" + str(len(os.listdir(args.images))),
       sys.stdout.flush() # flush terminal output
     print "" # print required to keep last printed line
