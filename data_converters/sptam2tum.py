@@ -68,11 +68,8 @@ def main():
               # TUM quaternion format is [x, y, z, w]
               quaternion = np.array([quaternion[1], quaternion[2], quaternion[3], quaternion[0]])
 
-              # create TUM pose with identity rotation matrix
+              # create TUM format
               newRow = [timestamp] + list(traslation) + list(quaternion)
-              writer.writerow(newRow)
-
-              # create TUM pose with identity rotation matrix
               writer.writerow(newRow)
 
       # close files
