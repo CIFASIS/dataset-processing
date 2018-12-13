@@ -31,6 +31,9 @@ rosbag play --clock sequence01.bag /stereo/left/image_raw:=/camera/left/image_ra
 rosrun ORB_SLAM2 Stereo /home/taihu/catkin_ws/src/ORB_SLAM2/Vocabulary/ORBvoc.txt /home/taihu/src/dataset-processing/slam_configs/orbslam.yaml true
 
 la trayectoria correcta esta en: FrameTrajectory_TUM_Format.txt
+Si ORB-SLAM crashea se puede encontrar las poses en los archivos tracked_poses_tum.log
+
+evo_traj tum --ref=/home/taihu/src/dataset-processing/data_converters/gt_tum_02.txt ./FrameTrajectory_TUM_Format.txt -p --plot_mode=xyz --align --n_to_align 10
 
 evo_traj tum --ref=/home/taihu/src/dataset-processing/data_converters/gt_tum_02.txt ./FrameTrajectory_TUM_Format.txt -p --plot_mode=xyz --align --n_to_align 10
 
