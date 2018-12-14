@@ -18,7 +18,7 @@ def main():
   """Main."""
 
   parser = argparse.ArgumentParser()
-  parser.description = "Convert a KITTI ground-truth file to TUM format"
+  parser.description = "Convert a KITTI ground-truth file to TUM format. The timestamps are extracted from the kitti rosbag used to run the sequence"
   parser.add_argument(
     '-k',
     '--kitti-gt',
