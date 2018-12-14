@@ -32,7 +32,7 @@ def main():
   parser.add_argument(
       '-o',
       '--output',
-      default="kittiXX_tum.txt",
+      default="gt_tum_kittiXX.txt",
       required=False,
       help=("Output file"))
 
