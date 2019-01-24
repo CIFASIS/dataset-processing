@@ -103,7 +103,7 @@ def save_imu_bag(frame_id, seq, seconds, nanoseconds, Gx, Gy, Gz, Tx, Ty, Tz):
 
 #################### images functions #########################
 
-# read the yaml file and get the information for the camera calibration, the camera is parse as arg (cam0 =left , cam1 = right)
+# read the yaml file and get the information for the camera calibration, the camera is parse as arg (cam0 = left , cam1 = right)
 def get_camera_info(camera_info, camera):
   with open(camera_info, 'r') as stream:
     try:
@@ -469,7 +469,7 @@ if __name__ == "__main__":
     camera_info_rect = [0, 0]
     image_l_frame_id = "left"
     image_r_frame_id = "right"
-    for i in range(0,2):
+    for i in range(0, 2):
       camera_info[i], T = get_camera_info(args.calibration, "cam" + str(i))
     camera_info_rect[0], camera_info_rect[1] = rectify_images(camera_info[0], camera_info[1], T)
     seq_right = 0
