@@ -8,7 +8,6 @@ import numpy as np
 import argparse
 import rosbag
 import cv2
-#from cv2 import cv2util
 import os
 import yaml
 import tf
@@ -125,7 +124,7 @@ def get_camera_info(camera_info, camera):
       
       k1,k2,t1,t2 = data[camera]['distortion_coeffs']
       camera_info.D = [k1,k2,t1,t2,0]
-      #if cam0 then it's left camera,so R = identity and T = [0 0 0]
+      #if cam0 then it's left camera, so R = identity and T = [0 0 0]
       if camera == "cam0":
         camera_info.R[0:3] = [1, 0, 0]
         camera_info.R[3:6] = [0, 1, 0]
@@ -134,7 +133,7 @@ def get_camera_info(camera_info, camera):
         camera_info.R[0:3] = data[camera]['T_cn_cnm1'][0][:3]
         camera_info.R[3:6] = data[camera]['T_cn_cnm1'][1][:3]
         camera_info.R[6:9] = data[camera]['T_cn_cnm1'][2][:3]
-        T[0:3] = [data[camera]['T_cn_cnm1'][0][3] ,data[camera]['T_cn_cnm1'][1][3], data[camera]['T_cn_cnm1'][2][3]]
+        T[0:3] = [data[camera]['T_cn_cnm1'][0][3], data[camera]['T_cn_cnm1'][1][3], data[camera]['T_cn_cnm1'][2][3]]
 
     except yaml.YAMLError as exc:
       print(exc)
