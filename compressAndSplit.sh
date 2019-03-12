@@ -3,17 +3,21 @@
 OUTPUT_DIR=$HOME/datasets/robot_desmalezador
 DATASET_DIR=$HOME/datasets/robot_desmalezador
 
+# get full directory name of the script no matter where it is being called from.
+CURRENT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+
 # move to dataset directory (this is important for the compression path)
 cd $DATASET_DIR
 
 for i in `seq 1 6`; do
   SEQ_NAME=sequence0$i
+  CALIBRATION_NAME=calibration0$i.yaml
   SEQ_DIR=$DATASET_DIR/$SEQ_NAME
   echo "Processing $SEQ_NAME in directory $DATASET_DIR/"
 
   # generate rosbag
   echo "Creating $OUTPUT_DIR/$SEQ_NAME.bag"
-  python create_bagfile.py --images $SEQ_DIR/zed/ --imu $SEQ_DIR/imu.log --gps $SEQ_DIR/gps.log --calibration $SEQ_DIR/calibration.yaml --odom $SEQ_DIR/odometry_raw.log --out $OUTPUT_DIR/$SEQ_NAME.bag
+  python $CURRENT_DIR/create_bagfile.py --images $SEQ_DIR/zed/ --imu $SEQ_DIR/imu.log --gps $SEQ_DIR/gps.log --calibration $DATASET_DIR/$CALIBRATION_NAME --odom $SEQ_DIR/odometry_raw.log --out $OUTPUT_DIR/$SEQ_NAME.bag
 
   # compress the sequence directory
   echo "Compressing $SEQ_DIR"
