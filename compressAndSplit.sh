@@ -3,6 +3,9 @@
 OUTPUT_DIR=$HOME/datasets/robot_desmalezador
 DATASET_DIR=$HOME/datasets/robot_desmalezador
 
+# move to dataset directory (this is important for the compression path)
+cd $DATASET_DIR
+
 for i in `seq 1 6`; do
   SEQ_NAME=sequence0$i
   SEQ_DIR=$DATASET_DIR/$SEQ_NAME
@@ -14,7 +17,7 @@ for i in `seq 1 6`; do
 
   # compress the sequence directory
   echo "Compressing $SEQ_DIR"
-  tar cf - $SEQ_DIR -P | pv -s $(du -sb $SEQ_DIR | awk '{print $1}') | gzip > $OUTPUT_DIR/$SEQ_NAME.tar.gz
+  tar cf - $SEQ_NAME -P | pv -s $(du -sb $SEQ_DIR | awk '{print $1}') | gzip > $OUTPUT_DIR/$SEQ_NAME.tar.gz
 
   # compress rosbag sequence
   echo "Compressing $OUTPUT_DIR/$SEQ_NAME.bag"
