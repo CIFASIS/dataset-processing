@@ -1,0 +1,11 @@
+<launch>
+
+  <node pkg="swri_transform_util" type="initialize_origin.py" name="initialize_origin" >
+       <remap from="/fix"  to="/gps/fix"/>
+       <param name="local_xy_frame" value="/map"/>
+       <param name="local_xy_origin" value="auto"/>
+  </node>
+
+   <node pkg="mapviz" type="mapviz" name="mapviz"/>
+</launch>
+
