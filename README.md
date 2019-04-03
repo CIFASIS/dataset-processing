@@ -1,3 +1,6 @@
+dataset-processing is a set of scripts to process, convert and visualize the (Rosario dataset)[http://www.cifasis-conicet.gov.ar/robot]
+
+
 gps_bag needs building in catkin_ws nmea_msgs 
 
 use MarkDown language!!!!
