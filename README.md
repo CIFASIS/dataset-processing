@@ -79,4 +79,3 @@ compressAndSplit.sh
 # CHANGELOG
 
 [Create rviz configuration to show data]
-
