@@ -3,7 +3,7 @@
 import argparse
 if __name__ == "__main__":
   
-  parser = argparse.ArgumentParser(description='Script that takes motors message and changes them')
+  parser = argparse.ArgumentParser(description='Script that takes motors messages and create a cleaner with only basic info log file')
   parser.add_argument('--input', help='old motors log file')
   parser.add_argument('--output', help='new motors log file')
   args = parser.parse_args()
@@ -14,9 +14,9 @@ if __name__ == "__main__":
     data = sentence[2].split(",")
     vel_1 = float(data[9])
     vel_2 = float(data[13])
-    angle = float(data[16])+5.67 #5.67
+    angle = float(data[16])+5.67 # offset estimated in the direction angle
     direction = data[17][:-3]
-    if direction == "0": # change direction ford = 0 back = 1 to ford = 1 back = -1
+    if direction == "0": # to change direction ford = 0 back = 1 to ford = 1 back = -1
       direction = "1"
     else:
       direction = "-1"

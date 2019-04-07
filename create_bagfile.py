@@ -140,7 +140,7 @@ def get_camera_info(camera_info, camera):
 
   return camera_info, T
 
-# get the image from the path and the parameters from the name
+# Get rectified matrices from the rectification function form openCV
 def rectify_images(cam0, cam1, T):
   R1_rectified = np.zeros((3,3))
   R2_rectified = np.zeros((3,3))
@@ -157,6 +157,7 @@ def rectify_images(cam0, cam1, T):
   cam1.P = list(P2_rectified.flat)
   return cam0, cam1
 
+# get the image from the path and the parameters from the name
 def get_image(path, filename):
   image = cv2.imread(path + "/" + filename)
   splitted_filename = filename.split("_")
@@ -311,15 +312,15 @@ def get_odom(line,vel_lin_prev):
   seconds, nanoseconds = sentence[0].split(".")
   nanoseconds = nanoseconds + "000"
   data = sentence[2].split(",")
-  vel_1 = float(data[13])
-  vel_2 = float(data[9])
-  if (vel_1<70 and vel_2<70): #filtrating noise problem, mesures much above 5km/h 
+  vel_1 = float(data[13]) #velocity of the first wheel
+  vel_2 = float(data[9])#velocity of the first wheel
+  if (vel_1<70 and vel_2<70): #filtrating noise problem, mesures much above 5km/h are skipped
     vel_lin = (vel_1+vel_2)/2
   elif (min(vel_1, vel_2) < 70):
     vel_lin = min(vel_1, vel_2)
   else:
     vel_lin = vel_lin_prev
-  angle = float(data[16])+5.67 #5.67
+  angle = float(data[16])+5.67 
   direction = data[17][:-3]
   if direction == "0": # change direction ford = 0 back = 1 to ford = 1 back = -1
     direction = "1"
@@ -328,16 +329,16 @@ def get_odom(line,vel_lin_prev):
   d = 0.57 # diameter of the wheel in meters
   vel_lin_meters = (vel_lin * math.pi * d) / 60.0
   angle_rads = math.radians(angle*0.20) # angle is scaled, value 100 = 20º to the right
-  angle_rads = angle_rads *-1 # cause angle is pos to the right, but in model pos is left
+  angle_rads = angle_rads *-1 # because angle is positive to the right, but in model positive is left
   return int(seconds), int(nanoseconds), vel_lin_meters, angle_rads, int(direction), vel_lin
 
-
+# Calculate the differential equations based on the Ackerman model
 def calculate_odom(x, y, theta, vel, angle, delta_t, direction):
-  k=0.95#1.08 0.95
-  ang_offset = 0.0	 #0.02415 0.02
+  k=0.95 #experimental value added to adequate the model
+  ang_offset = 0.0	 # It was incoroporated directly on the data
   vel = vel * direction
-  v_x = vel * math.cos(theta)#vel * math.cos((math.pi/2.0) - theta) 
-  v_y = vel * math.sin(theta)#vel * math.sin((math.pi/2.0) - theta) 
+  v_x = vel * math.cos(theta) #vel * math.cos((math.pi/2.0) - theta) 
+  v_y = vel * math.sin(theta) #vel * math.sin((math.pi/2.0) - theta) 
 
   x_next = v_x * delta_t + x
   y_next = v_y * delta_t + y 
@@ -347,12 +348,13 @@ def calculate_odom(x, y, theta, vel, angle, delta_t, direction):
 
   return x_next, y_next, theta_next, v_x, v_y , v_ang 
 
+# Convert the orientation angle in Quaternion for ROS
 def calculate_orientation(theta):
   quat = Quaternion()
   quat = tf.transformations.quaternion_from_euler(0, 0, theta) # roll, pitch, yaw
-  #quat_result = tf.transformations.quaternion_multiply(quat_old, quat)
   return quat
 
+# Save the odometry msg in the Rosbag
 def save_odom_bag(seq, seconds, nanoseconds, v_x, v_y, v_ang, x, y, orientation):
 
   odom_msg = Odometry()
@@ -380,6 +382,7 @@ def save_odom_bag(seq, seconds, nanoseconds, v_x, v_y, v_ang, x, y, orientation)
 
 #################### TF functions #########################
 
+# Inverse a rotation matrix
 def inv(transform):
     "Invert rigid body transformation matrix"
     R = transform[0:3, 0:3]
@@ -390,6 +393,7 @@ def inv(transform):
     transform_inv[0:3, 3] = list(t_inv.flat)
     return transform_inv
 
+# Read the transformation from the yaml file
 def get_transformation(from_frame_id, to_frame_id, transform):
   if to_frame_id == "imu":
     t = transform['position_imu_baselink']
@@ -417,6 +421,7 @@ def get_transformation(from_frame_id, to_frame_id, transform):
   tf_msg.transform.rotation.w = float(q[3])
   return tf_msg
 
+#Save the TFs in the rosbag
 def save_tf_bag(tfm, timestamps, x_odom, y_odom,orientation_odom):
   seq = 0
   tf_topic = "tf_static"
@@ -433,6 +438,7 @@ def save_tf_bag(tfm, timestamps, x_odom, y_odom,orientation_odom):
 #    tfm.transforms[4].transform.rotation.w = orientation_odom[j][3]
     bag.write(tf_topic, tfm, timestamp)
     seq = seq +1
+
 #############################################
 if __name__ == "__main__":
   
@@ -445,7 +451,8 @@ if __name__ == "__main__":
   parser.add_argument('--out', help='output bag file')
   args = parser.parse_args()
   bag = rosbag.Bag(args.out, 'w')
-################## imu part
+
+################## imu part ##################
   if args.imu:
     fr = open(args.imu,"r") #information obtained from sensor
     seq = 0
@@ -461,7 +468,8 @@ if __name__ == "__main__":
         print "\r imu processed: " + str(total_size/73) + "/" + str(total_size/73),
       sys.stdout.flush() # flush terminal output
     print "" # print required to keep last printed line
-################## images part
+
+################## images part ##################
   if args.images and args.calibration:
     i=0
     k=0
@@ -490,7 +498,8 @@ if __name__ == "__main__":
       print "\r images processed: " + str(k) +"/" + str(len(os.listdir(args.images))),
       sys.stdout.flush() # flush terminal output
     print "" # print required to keep last printed line
-################## gps part
+
+################## gps part ##################
   if args.gps:
     fr = open(args.gps,"r") #information obtained from sensor
     seq_GGA = 0
@@ -507,7 +516,7 @@ if __name__ == "__main__":
         save_gps_RMC_bag(gps_frame_id, seq_RMC, seconds, nanoseconds, v_linear_x, v_linear_y)
         seq_RMC = seq_RMC + 1     # increment seq number
 
-################# odometry part
+################# odometry part ##################
 
   if args.odom:
     fr = open(args.odom, "r")
@@ -566,14 +575,8 @@ if __name__ == "__main__":
 
     #quit()
 
-
-
-
-
-
-
       
-################# transformations part
+################# transformations part ##################
 
   if args.calibration:
 

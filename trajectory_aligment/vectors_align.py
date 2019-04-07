@@ -2,10 +2,13 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 import math
-from utils import plotHelpers as ph
 import matplotlib.pyplot as plt
+import matplotlib as mpl
+from mpl_toolkits.mplot3d import Axes3D
+from utils import plotHelpers as ph
 import argparse
 import tf
+import os
 sptam_x = []
 sptam_y = []
 sptam_z = []
@@ -17,20 +20,30 @@ vectors_orig = []
 if __name__ == "__main__":
   
     parser = argparse.ArgumentParser(description='Script that takes logfile with sptam mesures and compute its rotation with the z axis')
-    parser.add_argument('--file', help='sptam log file with rows containing: x y z')
+    parser.add_argument('--folder', help='sptam log file with rows containing: x y z')
     args = parser.parse_args()
-    fr = open(args.file,"r")
-    for line in fr:
-        x,y,z = line.split(" ")
-        vector = np.array([float(x), float(y), float(z)])
-        vectors_orig.append(vector)
-        vector_norm = vector/(np.linalg.norm(vector))
-        sptam_orig_x.append(float(x))
-        sptam_orig_y.append(float(y))
-        sptam_orig_z.append(float(z))
-        sptam_x.append(vector_norm[0])
-        sptam_y.append(vector_norm[1])
-        sptam_z.append(vector_norm[2])
+    for filename in sorted(os.listdir(args.folder)):
+        vectors_orig = []
+        sptam_orig_x = []
+        sptam_orig_y = []
+        sptam_orig_z = []
+        fr = open(args.folder + "/" + filename,"r")
+        flag_first_iteration = 1
+        for line in fr:
+            if flag_first_iteration == 1:
+                flag_first_iteration = 0
+                continue
+            timestamp,x,y,z = line.split(" ")
+            vector = np.array([float(x), float(y), float(z)])
+            vectors_orig.append(vector)
+            vector_norm = vector/(np.linalg.norm(vector))
+            sptam_orig_x.append(float(x))
+            sptam_orig_y.append(float(y))
+            sptam_orig_z.append(float(z))
+            sptam_x.append(vector_norm[0])
+            sptam_y.append(vector_norm[1])
+            sptam_z.append(vector_norm[2])
+        print len(sptam_x)
     sptam_mean = np.array([np.mean(sptam_x),np.mean(sptam_y),np.mean(sptam_z)])
     z_axis = np.array([0,0,1])
     z_axis_norm = z_axis/np.linalg.norm(z_axis)
@@ -59,9 +72,9 @@ if __name__ == "__main__":
     Rx = np.linalg.inv(Rx)
     Rz = np.linalg.inv(Rz)
 
-    print "prueba"
-    print Rx
-    print Rz
+    #print "prueba"
+    #print Rx
+    #print Rz
     R_prueba = np.linalg.inv(R)
     R_final = np.matmul(np.matmul(Rz[0:3,0:3],Rx[0:3,0:3]),np.linalg.inv(R))
     print "rotation from camera to odometry"
@@ -92,10 +105,12 @@ if __name__ == "__main__":
 
 
 
-
+    #fig = plt.figure()
     labels = np.array([ "S-PTAM orig", "S-PTAM rot" ])
     colors = np.array( ["black", "blue"] )
-
+    #ax = fig.gca(projection='3d')
+    #ax.plot(np.array(sptam_orig_x), np.array(sptam_orig_y), np.array(sptam_orig_z), label='parametric curve')
+    #ax.plot(np.array(x2),np.array(y2), np.array(z2), label='parametric curve')
     ph.plotPaths3D( lines3D, labels, colors )
 
     ####################################################################
