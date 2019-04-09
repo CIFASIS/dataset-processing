@@ -1,14 +1,10 @@
-dataset-processing is a set of scripts to process, convert and visualize the [Rosario dataset](http://www.cifasis-conicet.gov.ar/robot)
+*dataset-processing* is a set of scripts to process, convert and visualize the [Rosario dataset](http://www.cifasis-conicet.gov.ar/robot)
 
 
 # Disclaimer
 This site and the code provided here are under active development. Even though we try to only release working high quality code, this version might still contain some issues. Please use it with caution.
 
-gps_bag needs building in catkin_ws nmea_msgs 
-
-
-Use the S-PTAM branch https://gitlab.com/taihu/sptam/tree/ras_2017_sptam_full_working to make S-PTAM work properly on the Rosario dataset.
-
+[//]: # (Use the S-PTAM branch https://gitlab.com/taihu/sptam/tree/ras_2017_sptam_full_working to make S-PTAM work properly on the Rosario dataset.)
 
 
 # Ground-truth
@@ -58,7 +54,7 @@ If ORB-SLAM crashes, it is possible to recover the estimated trajectory from the
 
 # Dataset evaluation
 
-We recoend the [evo](https://github.com/MichaelGrupp/evo) evaluation tool.
+We recomend the [evo](https://github.com/MichaelGrupp/evo) evaluation tool.
 
 Use the python 2.7 version:
 
@@ -71,13 +67,6 @@ evo_traj tum --ref=gt_tum_02.txt FrameTrajectory_TUM_Format.txt -p --plot_mode=x
 
 evo_traj tum --ref=gt_tum_02.txt FrameTrajectory_TUM_Format.txt -p --plot_mode=xyz --align
 
-# Additional content
+[//]: # (# Script to upload data)
 
-## Script to upload data
-
-compressAndSplit.sh
-
-
-# CHANGELOG
-
-[Create rviz configuration to show data]
+[//]: # (compressAndSplit.sh)
