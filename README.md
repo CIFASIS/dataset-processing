@@ -10,7 +10,7 @@ This site and the code provided here are under active development. Even though w
 # Ground-truth
 The Ground-Truth is generated directly with the GPS-RTK positional measurements. To this end firstly the NMEA are converted to the format **timestamp x, y, z** using
 
-	python nmea2gps.py --input <gps_log> -output <rosatio_gt>
+	python <dataset-processing>/nmea2gps.py --input <gps_log> -output <rosatio_gt>
 
 Then, this format could be converted to any desired standard format as TUM or KITTI using the respectively converter:
 
@@ -27,30 +27,37 @@ Then, this format could be converted to any desired standard format as TUM or KI
 
 For the visualization of GPS measurements on ROS we recomend [mapviz](https://github.com/swri-robotics/mapviz)
 
-
 	roscore &
+	roslaunch <dataset-processing>/visualize_navsatfix.launch
 	rosbag play <rosbag>
-	roslaunch visualize_navsatfix.launch
 
+# Tested SLAM systems
 
-# RUN S-PTAM in Rosario dataset
-
+# robot_localization
 	roscore &
 	rosparam set use_sim_time true
-	roslaunch sptam_zed_bag.launch
+	roslaunch <dataset-processing>/robot_localization/dual_ekf_navsat.launch
 	rosbag play --clock <sequenceXX.bag>
 
 
-# RUN ORB-SLAM2 in Rosario dataset
+# S-PTAM
+
+	roscore &
+	rosparam set use_sim_time true
+	roslaunch <dataset-processing>/slam_configs/sptam_zed_bag.launch
+	rosbag play --clock <sequenceXX.bag>
+
+# ORB-SLAM2
 
 	roscore &
 	rosparam set use_sim_time true
 	rosbag play --clock sequence01.bag /stereo/left/image_raw:=/camera/left/image_raw /stereo/right/image_raw:=/camera/right/image_raw
 	rosrun ORB_SLAM2 Stereo ~/catkin_ws/src/ORB_SLAM2/Vocabulary/ORBvoc.txt <dataset-processing>/slam_configs/orbslam_ros.yaml true
+	rosbag play --clock <sequenceXX.bag>
 
-The output trajectory is stored as FrameTrajectory_TUM_Format.txt
+[//]: # (The output trajectory is stored as FrameTrajectory_TUM_Format.txt)
 
-If ORB-SLAM crashes, it is possible to recover the estimated trajectory from the file tracked_poses_tum.log
+[//]: # (If ORB-SLAM crashes, it is possible to recover the estimated trajectory from the file tracked_poses_tum.log)
 
 # Dataset evaluation
 
