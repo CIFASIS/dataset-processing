@@ -37,7 +37,7 @@ For the visualization of GPS measurements on ROS we recomend [mapviz](https://gi
 
 	roscore &
 	rosparam set use_sim_time true
-	roslaunch sptam zed_bag.launch
+	roslaunch sptam_zed_bag.launch
 	rosbag play --clock <sequenceXX.bag>
 
 
@@ -46,7 +46,7 @@ For the visualization of GPS measurements on ROS we recomend [mapviz](https://gi
 	roscore &
 	rosparam set use_sim_time true
 	rosbag play --clock sequence01.bag /stereo/left/image_raw:=/camera/left/image_raw /stereo/right/image_raw:=/camera/right/image_raw
-	rosrun ORB_SLAM2 Stereo /home/taihu/catkin_ws/src/ORB_SLAM2/Vocabulary/ORBvoc.txt dataset-processing/slam_configs/orbslam.yaml true
+	rosrun ORB_SLAM2 Stereo ~/catkin_ws/src/ORB_SLAM2/Vocabulary/ORBvoc.txt <dataset-processing>/slam_configs/orbslam_ros.yaml true
 
 The output trajectory is stored as FrameTrajectory_TUM_Format.txt
 
@@ -61,7 +61,7 @@ Use the python 2.7 version:
 	sudo pip2.7 install evo --upgrade --no-binary evo
 
 
-Exaples:
+Examples:
 
 evo_traj tum --ref=gt_tum_02.txt FrameTrajectory_TUM_Format.txt -p --plot_mode=xyz --align
 
