@@ -33,21 +33,21 @@ For the visualization of GPS measurements on ROS we recomend [mapviz](https://gi
 
 # Tested SLAM systems
 
-# robot_localization
+## robot_localization
 	roscore &
 	rosparam set use_sim_time true
 	roslaunch <dataset-processing>/robot_localization/dual_ekf_navsat.launch
 	rosbag play --clock <sequenceXX.bag>
 
 
-# S-PTAM
+## S-PTAM
 
 	roscore &
 	rosparam set use_sim_time true
 	roslaunch <dataset-processing>/slam_configs/sptam_zed_bag.launch
 	rosbag play --clock <sequenceXX.bag>
 
-# ORB-SLAM2
+## ORB-SLAM2
 
 	roscore &
 	rosparam set use_sim_time true
