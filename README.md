@@ -77,3 +77,31 @@ evo_traj tum --ref=gt_tum_02.txt FrameTrajectory_TUM_Format.txt -p --plot_mode=x
 [//]: # (# Script to upload data)
 
 [//]: # (compressAndSplit.sh)
+
+# Convert raw data to bagfiles and ASL format
+A bash script is provided to generate rosbag files from raw data.
+In addition, a tar containing files as ASL format is also generated for each sequence.
+To do this, just run:
+```
+./compressAndSplit.sh -deac
+```
+Flags (see below for more details):
+
+* `-d`: drop last part of sequences 01 and 06.
+* `-e`: fix timestamp issue by making them equidistant.
+* `-a`: generate ASL format.
+* `-c`: clean temporal files generated during the execution.
+
+Raw files and generated files can be found in the [official Rosario dataset site](http://www.cifasis-conicet.gov.ar/robot).
+
+We have experienced issues when collecting data with the IMU we have used to record the dataset.
+After approximately 458 seconds of recording, erroneous measurements are obtained for a few seconds.
+We performed several experiments to check this hardware issue.
+
+Duration of sequences 01 and 06 is greater than 458 seconds. We provide a `-d` flag to cut sequences 01 and 06,
+discarding the last part of these sequences. Duration of the generated rosbags is approximately 445 seconds
+(this value can be easily edited in `compressAndSplit.sh`).
+
+Additionally, an issue related to the timestamps was fixed. We found that multiple rows were labeled with the same timestamp.
+To solve this, `-e` flag allows to fix timestamps making them equidistant.
+See `modify_bag_imu_timestamps.py` for more details.

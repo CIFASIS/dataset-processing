@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
+from __future__ import print_function # print() compatible with both, python2.7 and python3
 ## will replace dataset2bag
 import sys
 import math
@@ -12,7 +12,6 @@ import os
 import yaml
 import tf
 import rospy
-import matplotlib.pyplot as plt
 from sensor_msgs.msg import Imu
 from sensor_msgs.msg import Image
 from sensor_msgs.msg import CameraInfo
@@ -463,11 +462,11 @@ if __name__ == "__main__":
       save_imu_bag(imu_frame_id, seq, seconds, nanoseconds, Gx, Gy, Gz, Tx, Ty, Tz)
       seq = seq + 1     # increment seq number
       if seq < (total_size/73):
-        print "\r imu processed: " + str(seq) + "/" + str(total_size/73),
+        print("\r imu processed: " + str(seq) + "/" + str(total_size/73), end=" ")
       else:
-        print "\r imu processed: " + str(total_size/73) + "/" + str(total_size/73),
+        print("\r imu processed: " + str(total_size/73) + "/" + str(total_size/73), end=" ")
       sys.stdout.flush() # flush terminal output
-    print "" # print required to keep last printed line
+    print("") # print required to keep last printed line
 
 ################## images part ##################
   if args.images and args.calibration:
@@ -495,9 +494,9 @@ if __name__ == "__main__":
         seq_right = seq_right + 1
 
       k = k + 1
-      print "\r images processed: " + str(k) +"/" + str(len(os.listdir(args.images))),
+      print("\r images processed: " + str(k) +"/" + str(len(os.listdir(args.images))), end=" ")
       sys.stdout.flush() # flush terminal output
-    print "" # print required to keep last printed line
+    print("") # print required to keep last printed line
 
 ################## gps part ##################
   if args.gps:
