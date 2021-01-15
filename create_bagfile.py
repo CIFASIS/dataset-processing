@@ -20,14 +20,23 @@ from geometry_msgs.msg import TwistStamped, TransformStamped, Quaternion
 from nav_msgs.msg import Odometry
 from tf2_msgs.msg import TFMessage
 
+from rosario2euroc import save_asl_format
+
 #################### imu functions #########################
 
-# get parameters from the name of the file and modify imu values to correct error and mesure units
-def modify_imu_data(line):
-  #since number of characters of the values may change lines are splitted usings spaces as delimiters
+# get imu metadata (timestamp splitted in s and ns)
+def get_imu_info(line):
   splitted_line = line.split(" ")
   seconds,nanoseconds = splitted_line[0].split(".")
   nanoseconds = nanoseconds + "000"
+  return int(seconds), int(nanoseconds)
+
+# get parameters from the name of the file and modify imu values to correct error and mesure units
+def modify_imu_data(line):
+  seconds, nanoseconds = get_imu_info(line)
+
+  #since number of characters of the values may change lines are splitted usings spaces as delimiters
+  splitted_line = line.split(" ")
   Gx = float(splitted_line[3])
   Gy = float(splitted_line[4])
   Gz = float(splitted_line[5])
@@ -60,7 +69,10 @@ def modify_imu_data(line):
   Gy_rads = Gy * math.pi / 180.0
   Gz_rads = Gz * math.pi / 180.0
 
-  return int(seconds), int(nanoseconds), Gx_rads, Gy_rads, Gz_rads, Tx_meters, Ty_meters, Tz_meters      
+  return seconds, nanoseconds, Gx_rads, Gy_rads, Gz_rads, Tx_meters, Ty_meters, Tz_meters
+
+def get_imu_topic():
+  return "/imu"
 
 # save imu msg to the ROSBAG
 def save_imu_bag(frame_id, seq, seconds, nanoseconds, Gx, Gy, Gz, Tx, Ty, Tz):
@@ -69,7 +81,7 @@ def save_imu_bag(frame_id, seq, seconds, nanoseconds, Gx, Gy, Gz, Tx, Ty, Tz):
   ros_imu.header.stamp.secs = seconds
   ros_imu.header.stamp.nsecs = nanoseconds
   ros_imu.header.frame_id = frame_id
-  imu_topic = "/imu"
+  imu_topic = get_imu_topic()
 
   ros_imu.angular_velocity.x=Gx
   ros_imu.angular_velocity.y=Gy
@@ -159,16 +171,24 @@ def rectify_images(cam0, cam1, T):
 # get the image from the path and the parameters from the name
 def get_image(path, filename):
   image = cv2.imread(path + "/" + filename)
+  seconds, nanoseconds, frame_id = get_image_info(filename)
+  return frame_id, seconds, nanoseconds, image
+
+# get image metadata (frame id and timestamp splitted in s and ns)
+def get_image_info(filename):
   splitted_filename = filename.split("_")
-  seconds, nanoseconds, compressed_format = splitted_filename[1].split(".")
+  seconds, nanoseconds, _ = splitted_filename[1].split(".")
   nanoseconds = nanoseconds + "000"
   frame_id = splitted_filename[0]
-  return frame_id, int(seconds), int(nanoseconds), image
+  return int(seconds), int(nanoseconds), frame_id
+
+def get_image_topic(frame_id):
+  return "/stereo/" + frame_id + "/image_raw"
 
 # save img msg to the ROSBAG. It doesn't matter if its right or left, the difference comes with frame_ïd  
 def save_image_bag(frame_id,seq, seconds, nanoseconds, image, ros_image_config):
   ros_image = Image()
-  img_topic = "/stereo/" + frame_id + "/image_raw"
+  img_topic = get_image_topic(frame_id)
   img_config_topic = "/stereo/" + frame_id + "/camera_info"
   ros_image.header.frame_id = "/stereo/" + frame_id
   ros_image.header.seq = seq
@@ -191,12 +211,18 @@ def save_image_bag(frame_id,seq, seconds, nanoseconds, image, ros_image_config):
 
 #################### gps functions #########################
 
-# get the gps information necesary for fix message from the line (that is presumed to be GGA)
-def get_gps_data_fromGGA(line):
+# get gps metadata (timestamp splitted in s and ns and rest of the line)
+def get_gps_info(line):
   timestamp = line.split(' ')[0]
   seconds = timestamp.split('.')[0]
-  nanoseconds = timestamp.split('.')[1] + "000" 
+  nanoseconds = timestamp.split('.')[1] + "000"
   sentencesData = line.split(',')
+  return int(seconds), int(nanoseconds), sentencesData
+
+
+# get the gps information necesary for fix message from the line (that is presumed to be GGA)
+def get_gps_data_fromGGA(line):
+  seconds, nanoseconds, sentencesData = get_gps_info(line)
 
   #get status and service
   gps_qual = int(sentencesData[6])
@@ -260,7 +286,7 @@ def get_gps_data_fromGGA(line):
   position_covariance[8] = (2 * hdop) ** 2
   position_covariance_type = NavSatFix.COVARIANCE_TYPE_APPROXIMATED
 
-  return int(seconds), int(nanoseconds), status, service, latitude, longitude, altitude, position_covariance, position_covariance_type
+  return seconds, nanoseconds, status, service, latitude, longitude, altitude, position_covariance, position_covariance_type
 
 # save the information to the rosbag
 def save_gps_bag(frame_id, seq, seconds, nanoseconds, status, service, latitude, longitude, altitude, position_covariance, position_covariance_type):
@@ -282,16 +308,13 @@ def save_gps_bag(frame_id, seq, seconds, nanoseconds, status, service, latitude,
 
 # get the gps information necesary for vel message from the line (that is presumed to be RMC)
 def get_gps_data_fromRMC(line):
-  timestamp = line.split(' ')[0]
-  seconds = timestamp.split('.')[0]
-  nanoseconds = timestamp.split('.')[1] + "000" 
-  sentencesData = line.split(',')
+  seconds, nanoseconds, sentencesData = get_gps_info(line)
   velocity_meters = float(sentencesData[7]) * 0.514444
   angle_rads =  float(sentencesData[8]) * math.pi / 180 
   v_linear_x = velocity_meters * math.sin(angle_rads)
   v_linear_y = velocity_meters * math.cos(angle_rads)
 
-  return int(seconds), int(nanoseconds), v_linear_x, v_linear_y
+  return seconds, nanoseconds, v_linear_x, v_linear_y
 
 # save the information to the rosbag
 def save_gps_RMC_bag(frame_id, seq, seconds, nanoseconds, v_linear_x, v_linear_y):
@@ -306,11 +329,17 @@ def save_gps_RMC_bag(frame_id, seq, seconds, nanoseconds, v_linear_x, v_linear_y
   bag.write(gps_RMC_topic, ros_vel, ros_vel.header.stamp)
 
 #################### Odometry functions ###################
-def get_odom(line,vel_lin_prev):
+
+# get odom info (timestamp splitted in s an ns, and the rest of the line)
+def get_odom_info(line):
   sentence = line.split(" ")
   seconds, nanoseconds = sentence[0].split(".")
   nanoseconds = nanoseconds + "000"
   data = sentence[2].split(",")
+  return int(seconds), int(nanoseconds), data
+
+def get_odom(line,vel_lin_prev):
+  seconds, nanoseconds, data = get_odom_info(line)
   vel_1 = float(data[13]) #velocity of the first wheel
   vel_2 = float(data[9])#velocity of the first wheel
   if (vel_1<70 and vel_2<70): #filtrating noise problem, mesures much above 5km/h are skipped
@@ -329,7 +358,7 @@ def get_odom(line,vel_lin_prev):
   vel_lin_meters = (vel_lin * math.pi * d) / 60.0
   angle_rads = math.radians(angle*0.20) # angle is scaled, value 100 = 20º to the right
   angle_rads = angle_rads *-1 # because angle is positive to the right, but in model positive is left
-  return int(seconds), int(nanoseconds), vel_lin_meters, angle_rads, int(direction), vel_lin
+  return seconds, nanoseconds, vel_lin_meters, angle_rads, int(direction), vel_lin
 
 # Calculate the differential equations based on the Ackerman model
 def calculate_odom(x, y, theta, vel, angle, delta_t, direction):
@@ -439,6 +468,44 @@ def save_tf_bag(tfm, timestamps, x_odom, y_odom,orientation_odom):
     seq = seq +1
 
 #############################################
+
+def get_start_time(imu, images, gps, odom):
+  min_timestamp = None
+  if imu:
+    with open(imu,"r") as f:
+      line = next(f, None)
+      seconds, nanoseconds = get_imu_info(line)
+      min_timestamp = rospy.Time(seconds, nanoseconds)
+
+  if images:
+    image_filename = sorted(os.listdir(images))[0]
+    seconds, nanoseconds, _ = get_image_info(image_filename)
+    image_first_ts = rospy.Time(seconds, nanoseconds)
+    if min_timestamp is None or image_first_ts < min_timestamp:
+      min_timestamp = image_first_ts
+
+  if gps:
+    with open(gps,"r") as f:
+      line = next(f, None)
+      seconds, nanoseconds, _ = get_gps_info(line)
+      gps_first_ts = rospy.Time(seconds, nanoseconds)
+      if min_timestamp is None or gps_first_ts < min_timestamp:
+        min_timestamp = gps_first_ts
+
+  if odom:
+    with open(odom, "r") as f:
+      line = next(f, None)
+      seconds, nanoseconds, _ = get_odom_info(line)
+      odom_first_ts = rospy.Time(seconds, nanoseconds)
+      if min_timestamp is None or odom_first_ts < min_timestamp:
+        min_timestamp = odom_first_ts
+
+  return min_timestamp
+
+def get_imu_time_from_line(line):
+  s, ns = get_imu_info(line)
+  return rospy.Time(s, ns)
+
 if __name__ == "__main__":
   
   parser = argparse.ArgumentParser(description='Script that takes images imu and gps along with the calibration info to create a rosbag')
@@ -447,18 +514,51 @@ if __name__ == "__main__":
   parser.add_argument('--calibration', help='yaml file with the calibration')
   parser.add_argument('--gps', help='gps log file')
   parser.add_argument('--odom', help='odometry log file with speed and angle')
+  parser.add_argument('--eqdistant_imu', action='store_true', help='Make IMU timestamps equidistant.')
+  parser.add_argument('--max_duration', type=float, help='Max duration of the rosbag.')
+  parser.add_argument('--save_asl_format', help='Save data as ASL format.')
   parser.add_argument('--out', help='output bag file')
   args = parser.parse_args()
   bag = rosbag.Bag(args.out, 'w')
 
+  LEFT_FRAME_ID = "left"
+  RIGHT_FRAME_ID = "right"
+
+  if args.max_duration:
+    start_time = get_start_time(args.imu, args.images, args.gps, args.odom)
+    max_end_time = start_time + rospy.Duration(args.max_duration)
+
 ################## imu part ##################
   if args.imu:
     fr = open(args.imu,"r") #information obtained from sensor
+    if args.eqdistant_imu:
+      # Convert it to a list in order to access last element
+      fr = list(fr)
+      start_sec, start_nsec = get_imu_info(fr[0])
+      end_sec, end_nsec = get_imu_info(fr[-1])
+      samples_m_1 = len(fr) - 1
+      start_ts = rospy.Time(start_sec, start_nsec)
+      end_ts = rospy.Time(end_sec, end_nsec)
+      # Get delta/period of time (it should be equal to 1/frequency)
+      dt = (end_ts - start_ts) / samples_m_1
+      curr_time = start_ts
+      # print(start_ts.to_sec(), end_ts.to_sec(), samples_m_1, dt.to_sec())
+
     seq = 0
     imu_frame_id = "imu"
     total_size = os.path.getsize(args.imu)
     for line in fr:
       seconds, nanoseconds, Gx, Gy, Gz, Tx, Ty, Tz = modify_imu_data(line)
+      if args.eqdistant_imu:
+        # Ignore seconds and nanoseconds from raw file and calculate them
+        # using the initial timestamp and adding dt in each iteration.
+        seconds = curr_time.secs
+        nanoseconds = curr_time.nsecs
+        curr_time += dt
+
+      if args.max_duration and rospy.Time(seconds, nanoseconds) > max_end_time:
+        break
+
       save_imu_bag(imu_frame_id, seq, seconds, nanoseconds, Gx, Gy, Gz, Tx, Ty, Tz)
       seq = seq + 1     # increment seq number
       if seq < (total_size/73):
@@ -474,8 +574,7 @@ if __name__ == "__main__":
     k=0
     camera_info = [0, 0]
     camera_info_rect = [0, 0]
-    image_l_frame_id = "left"
-    image_r_frame_id = "right"
+
     for i in range(0, 2):
       camera_info[i], T = get_camera_info(args.calibration, "cam" + str(i))
     camera_info_rect[0], camera_info_rect[1] = rectify_images(camera_info[0], camera_info[1], T)
@@ -483,14 +582,19 @@ if __name__ == "__main__":
     seq_left = 0
     for filename in sorted(os.listdir(args.images)):
 
+      if args.max_duration:
+        seconds, nanoseconds, _ = get_image_info(filename)
+        if rospy.Time(seconds, nanoseconds) > max_end_time:
+          continue
+
       camera, seconds, nanoseconds, image = get_image(args.images, filename)
 
-      if camera == "left":
-        save_image_bag(image_l_frame_id, seq_left, seconds, nanoseconds, image, camera_info_rect[0])
+      if camera == LEFT_FRAME_ID:
+        save_image_bag(LEFT_FRAME_ID, seq_left, seconds, nanoseconds, image, camera_info_rect[0])
         seq_left = seq_left + 1
 
-      if camera == "right":
-        save_image_bag(image_r_frame_id, seq_right, seconds, nanoseconds, image, camera_info_rect[1])
+      if camera == RIGHT_FRAME_ID:
+        save_image_bag(RIGHT_FRAME_ID, seq_right, seconds, nanoseconds, image, camera_info_rect[1])
         seq_right = seq_right + 1
 
       k = k + 1
@@ -504,7 +608,12 @@ if __name__ == "__main__":
     seq_GGA = 0
     seq_RMC = 0
     gps_frame_id = "gps"
-    for line in fr:	
+    for line in fr:
+      if args.max_duration:
+        seconds, nanoseconds, _ = get_gps_info(line)
+        if rospy.Time(seconds, nanoseconds) > max_end_time:
+          break
+
       if "GGA" in line:
         seconds, nanoseconds, status, service, latitude, longitude, altitude, position_covariance, position_covariance_type = get_gps_data_fromGGA(line)
         save_gps_bag(gps_frame_id, seq_GGA, seconds, nanoseconds, status, service, latitude, longitude, altitude, position_covariance, position_covariance_type)
@@ -532,6 +641,8 @@ if __name__ == "__main__":
     global_timestamps = [] # to be used as timestamps for tf 
     for line in fr:
       seconds, nanoseconds, velo_l, angle, direction, vel_lin_prev = get_odom(line,vel_lin_prev)
+      if args.max_duration and rospy.Time(seconds, nanoseconds) > max_end_time:
+        break
       delta_t = 0.1 # needs to be changed to the time diference between timestamps
       x_next, y_next, theta_next, v_x, v_y, v_ang = calculate_odom(x, y, theta, velo_l, angle, delta_t,direction)
       orientation = calculate_orientation(theta)
@@ -590,8 +701,8 @@ if __name__ == "__main__":
 
         transforms = [
         ('base_link', imu_frame_id, T_imu_baselink),
-        (imu_frame_id, image_l_frame_id , T_cam_l_to_imu),
-        (imu_frame_id, image_r_frame_id, T_cam_r_to_imu),
+        (imu_frame_id, LEFT_FRAME_ID , T_cam_l_to_imu),
+        (imu_frame_id, RIGHT_FRAME_ID, T_cam_r_to_imu),
         ('base_link', gps_frame_id, T_gps_to_baselink) #, #it is already in position-orientation(Quat), no need for transf
         #(odom_frame_id,'base_link', T_baselink_to_odom)
         ]
@@ -605,3 +716,12 @@ if __name__ == "__main__":
 
   bag.close()
 
+  if args.save_asl_format:
+    if not args.calibration:
+      raise ValueError("Calibration file must be supplied")
+    save_asl_format(args.out,
+                    args.calibration,
+                    get_image_topic(LEFT_FRAME_ID),
+                    get_image_topic(RIGHT_FRAME_ID),
+                    get_imu_topic(),
+                    args.save_asl_format)

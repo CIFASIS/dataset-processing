@@ -37,20 +37,24 @@ def main():
 
 	args = parser.parse_args()
 	print(args)
-	inbag = rosbag.Bag(args.rosbag)
+	save_asl_format(args.rosbag, args.calib, args.left, args.right, args.imu, args.output)
+
+
+def save_asl_format(inbag_path, calib, left_topic, right_topic, imu_topic, output):
+	inbag = rosbag.Bag(inbag_path)
 	bridge = CvBridge()
 
 	parsed_calib = None
-	if args.calib is not None:
-		with open(args.calib) as input_calib:
+	if calib is not None:
+		with open(calib) as input_calib:
 			parsed_calib = yaml.load(input_calib)
 
-	if os.path.exists(args.output):
+	if os.path.exists(output):
 		raise ValueError("Output folder already exists")
 
-	os.mkdir(args.output)
+	os.mkdir(output)
 
-	path = os.path.join(args.output, "imu0")
+	path = os.path.join(output, "imu0")
 	header = ["#timestamp [ns]", "w_RS_S_x [rad s^-1]", "w_RS_S_y [rad s^-1]", "w_RS_S_z [rad s^-1]", "a_RS_S_x [m s^-2]", "a_RS_S_y [m s^-2]","a_RS_S_z [m s^-2]"]
 	os.mkdir(path)
 	if parsed_calib is not None:
@@ -60,11 +64,11 @@ def main():
 	with open(filepath, 'w') as csvfile:
 		data_writer = csv.writer(csvfile, delimiter=',')
 		data_writer.writerow(header)
-		for topic, msg, t in inbag.read_messages(topics=[args.imu]):
+		for topic, msg, t in inbag.read_messages(topics=[imu_topic]):
 			data = [msg.header.stamp.to_nsec(), msg.angular_velocity.x, msg.angular_velocity.y, msg.angular_velocity.z, msg.linear_acceleration.x, msg.linear_acceleration.y, msg.linear_acceleration.z]
 			data_writer.writerow(data)
 
-	path = os.path.join(args.output, "cam0")
+	path = os.path.join(output, "cam0")
 	header = ["#timestamp [ns]", "filename"]
 	os.mkdir(path)
 	if parsed_calib is not None:
@@ -76,14 +80,14 @@ def main():
 	with open(filepath, 'w') as csvfile:
 		data_writer = csv.writer(csvfile, delimiter=',')
 		data_writer.writerow(header)
-		for topic, msg, t in inbag.read_messages(topics=[args.left]):
+		for topic, msg, t in inbag.read_messages(topics=[left_topic]):
 			data = [str(msg.header.stamp.to_nsec()), str(msg.header.stamp.to_nsec()) + '.png']
 			data_writer.writerow(data)
 			cv2_img = bridge.imgmsg_to_cv2(msg, "mono8")
 			imagepath = os.path.join(datapath, str(msg.header.stamp.to_nsec()) + '.png')
 			cv2.imwrite(imagepath, cv2_img)
 
-	path = os.path.join(args.output, "cam1")
+	path = os.path.join(output, "cam1")
 	header = ["#timestamp [ns]", "filename"]
 	os.mkdir(path)
 	if parsed_calib is not None:
@@ -95,7 +99,7 @@ def main():
 	with open(filepath, 'w') as csvfile:
 		data_writer = csv.writer(csvfile, delimiter=',')
 		data_writer.writerow(header)
-		for topic, msg, t in inbag.read_messages(topics=[args.right]):
+		for topic, msg, t in inbag.read_messages(topics=[right_topic]):
 			data = [str(msg.header.stamp.to_nsec()), str(msg.header.stamp.to_nsec()) + '.png']
 			data_writer.writerow(data)
 			cv2_img = bridge.imgmsg_to_cv2(msg, "mono8")
