@@ -303,7 +303,7 @@ def save_gps_bag(frame_id, seq, seconds, nanoseconds, status, service, latitude,
 def get_gps_data_fromRMC(line):
   seconds, nanoseconds, sentencesData = get_gps_info(line)
   velocity_meters = float(sentencesData[7]) * 0.514444
-  angle_rads =  float(sentencesData[8]) * math.pi / 180 
+  angle_rads =  float(sentencesData[8]) * math.pi / 180.0
   v_linear_x = velocity_meters * math.sin(angle_rads)
   v_linear_y = velocity_meters * math.cos(angle_rads)
 
@@ -336,7 +336,7 @@ def get_odom(line, vel_lin_prev):
   vel_1 = float(data[13]) # velocity of the first wheel
   vel_2 = float(data[9])  # velocity of the second wheel
   if (vel_1<70 and vel_2<70): # filtrating noise problem, mesures much above 5km/h are skipped
-    vel_lin = (vel_1 + vel_2) / 2
+    vel_lin = (vel_1 + vel_2) / 2.0
   elif (min(vel_1, vel_2) < 70):
     vel_lin = min(vel_1, vel_2)
   else:
@@ -348,7 +348,7 @@ def get_odom(line, vel_lin_prev):
   else:
     direction = "-1"
   d = 0.57 # diameter of the wheel in meters
-  vel_lin_meters = (vel_lin * math.pi * d) / 60.0
+  vel_lin_meters = (vel_lin * math.pi * d) / 60.0 # divide by 60.0 to get it in seconds
   angle_rads = math.radians(angle*0.20) # angle is scaled, value 100 = 20º to the right
   angle_rads = angle_rads *-1 # because angle is positive to the right, but in model positive is left
   return seconds, nanoseconds, vel_lin_meters, angle_rads, int(direction), vel_lin
