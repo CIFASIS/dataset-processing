@@ -331,17 +331,17 @@ def get_odom_info(line):
   data = sentence[2].split(",")
   return int(seconds), int(nanoseconds), data
 
-def get_odom(line,vel_lin_prev):
+def get_odom(line, vel_lin_prev):
   seconds, nanoseconds, data = get_odom_info(line)
-  vel_1 = float(data[13]) #velocity of the first wheel
-  vel_2 = float(data[9])#velocity of the first wheel
-  if (vel_1<70 and vel_2<70): #filtrating noise problem, mesures much above 5km/h are skipped
-    vel_lin = (vel_1+vel_2)/2
+  vel_1 = float(data[13]) # velocity of the first wheel
+  vel_2 = float(data[9])  # velocity of the second wheel
+  if (vel_1<70 and vel_2<70): # filtrating noise problem, mesures much above 5km/h are skipped
+    vel_lin = (vel_1 + vel_2) / 2
   elif (min(vel_1, vel_2) < 70):
     vel_lin = min(vel_1, vel_2)
   else:
     vel_lin = vel_lin_prev
-  angle = float(data[16])+5.67 
+  angle = float(data[16]) + 5.67 # Angle offset = 5.67. The robot tends to be deviated 1.07º to the left (equivalent to 5.67) when it is moving forward.
   direction = data[17][:-3]
   if direction == "0": # change direction ford = 0 back = 1 to ford = 1 back = -1
     direction = "1"
