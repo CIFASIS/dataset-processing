@@ -79,6 +79,11 @@ evo_traj tum --ref=gt_tum_02.txt FrameTrajectory_TUM_Format.txt -p --plot_mode=x
 [//]: # (compressAndSplit.sh)
 
 # Convert raw data to bagfiles and ASL format
+## Install dependencies
+
+	sudo apt install pv
+
+## Run convertion script
 A bash script is provided to generate rosbag files from raw data.
 In addition, a tar containing files as ASL format is also generated for each sequence.
 To do this, just run:
@@ -90,7 +95,6 @@ Flags (see below for more details):
 * `-d`: drop last part of sequences 01 and 06.
 * `-e`: fix timestamp issue by making them equidistant.
 * `-a`: generate ASL format.
-* `-c`: clean temporal files generated during the execution.
 
 Raw files and generated files can be found in the [official Rosario dataset site](http://www.cifasis-conicet.gov.ar/robot).
 
