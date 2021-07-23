@@ -47,7 +47,7 @@ def modify_imu_data(line):
 ### adjustment of value's offsets (everythin in g and Hz)
   with open(args.calibration, 'r') as stream:
     try:
-      data_offset = yaml.load(stream)
+      data_offset = yaml.load(stream, yaml.SafeLoader)
       acc_offset = data_offset['imu']['acc_offset']
       gyro_offset = data_offset['imu']['gyro_offset']
     except yaml.YAMLError as exc:
@@ -111,7 +111,7 @@ def save_imu_bag(frame_id, seq, seconds, nanoseconds, Gx, Gy, Gz, Tx, Ty, Tz):
 def get_camera_info(camera_info, camera):
   with open(camera_info, 'r') as stream:
     try:
-      data = yaml.load(stream)
+      data = yaml.load(stream, yaml.SafeLoader)
       camera_info = CameraInfo()
       T=[0,0,0]
       camera_info.width = data[camera]['resolution'][0]
@@ -685,7 +685,7 @@ if __name__ == "__main__":
 
     with open(args.calibration, 'r') as stream:
       try:
-        data = yaml.load(stream)
+        data = yaml.load(stream, Loader=yaml.SafeLoader)
         T_imu_baselink = data['imu']
         T_cam_l_to_imu = np.matrix(data['cam0']['T_cam_imu'])
         T_cam_r_to_imu = np.matrix(data['cam1']['T_cam_imu'])
