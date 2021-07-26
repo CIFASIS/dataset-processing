@@ -265,7 +265,8 @@ def get_gps_data_fromGGA(line):
   # get altitude in meters (9 is above sea level, 11 is sea level above ellipsoide) with 0 reference at the ellipsoide
   altitude = float(sentencesData[9]) + float (sentencesData[11])
 
-  # get covariance using Horizontal dilution of position
+  # get covariance using Horizontal dilution of position 
+  # (https://answers.ros.org/question/10310/calculate-navsatfix-covariance/)
   hdop = float(sentencesData[8])
   position_covariance = [0,0,0,0,0,0,0,0,0]
   position_covariance[0] = hdop ** 2
