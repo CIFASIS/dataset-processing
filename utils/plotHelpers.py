@@ -146,6 +146,44 @@ def plotPaths3D(paths, labels, colors, title=None):
   if title:
     ax.set_title(title)
 
+
+def plotPathWithOrientation3D(paths, orientations, labels, colors, title=None):
+  """
+  """
+
+  assert( len(paths) == len(labels) )
+  assert( len(paths) <= len(colors) )
+
+  fig = plt.figure()
+
+  ax = fig.add_subplot(111, projection='3d')
+
+  for (X, Y, Z), (x_orientation, y_orientation, z_orientation), label, color in zip(paths, orientations, labels, colors):
+    ax.quiver(X, Y, Z, x_orientation, y_orientation, z_orientation, label=label, color=color)
+
+  # simulate equal aspect ratio
+  # assume first path is ground truth
+  #"""
+  max_range = np.array([paths[0][0].max()-paths[0][0].min(), paths[0][1].max()-paths[0][1].min(), paths[0][2].max()-paths[0][2].min()]).max() / 2.0
+  mean_x = paths[0][0].mean()
+  mean_y = paths[0][1].mean()
+  mean_z = paths[0][2].mean()
+  ax.set_xlim(mean_x - max_range, mean_x + max_range)
+  ax.set_ylim(mean_y - max_range, mean_y + max_range)
+  ax.set_zlim(mean_z - max_range, mean_z + max_range)
+  #"""
+  # Set axis labels
+
+  xLabel = ax.set_xlabel('x (m)')
+  yLabel = ax.set_ylabel('y (m)')
+  zLabel = ax.set_zlabel('z (m)')
+
+  handles, labels = ax.get_legend_handles_labels()
+  ax.legend(handles, labels)
+
+  if title:
+    ax.set_title(title)
+
 def plotPaths2D(paths, labels, colors, xlabel=None, ylabel=None, cloud_file=None, grid=None, save_filename=None):
   """
   """

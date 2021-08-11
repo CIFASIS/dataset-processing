@@ -3,6 +3,7 @@
 
 import argparse
 import rospy
+import math
 import numpy as np
 from utils import plotHelpers as ph
 import matplotlib.pyplot as plt
@@ -91,6 +92,52 @@ def getLLHfromGGASensence( sentence ):
   return latitude, longitude, altitude
 
 
+def unit_vector(vector):
+  """ Returns the unit vector of the vector.  """
+  return vector / np.linalg.norm(vector)
+
+def angle_between(v1, v2):
+  """ Returns the angle in radians between vectors 'v1' and 'v2'::
+
+      >>> angle_between((1, 0, 0), (0, 1, 0))
+      1.5707963267948966
+      >>> angle_between((1, 0, 0), (1, 0, 0))
+      0.0
+      >>> angle_between((1, 0, 0), (-1, 0, 0))
+      3.141592653589793
+  """
+  v1_u = unit_vector(v1)
+  v2_u = unit_vector(v2)
+  return np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0))
+
+
+def compute_pose_orientations(positions):
+
+  """ Compute orientation from a path (array of positions)
+      Given two consecutive positions, compute the vector direction between them
+      Note: it should consider the case where the second position is behind the first one (e.g. robot moving backwards)
+  """
+
+  orientations = []
+  prev_orientation = [0,0,0]
+  for pos1, pos2 in zip(positions, positions[1:]):
+    orientation = unit_vector(pos2 - pos1)
+    # TODO: We need to consider the first orientation as identity.
+    angle_between_orientation_vectors = angle_between(orientation, prev_orientation) * 180.0 / math.pi # convert to degrees
+
+    # TODO: We need to compute the quaternion
+
+    # if the angle between two consecutive orientation is larger than 90 degrees, the robot should be still or moving backwards
+    if abs(angle_between_orientation_vectors) > 90:
+      print("change moving direction. Robot is still or should be moving backward")
+    prev_orientation = orientation
+
+    orientations.append( orientation )
+
+  # repeat the last orientation just to have the same length than positions
+  orientations.append( prev_orientation )
+  return orientations
+
 
 if __name__ == "__main__":
 
@@ -153,6 +200,9 @@ if __name__ == "__main__":
     outputFile.write(timestamp +' '+ str(position[0]) +' '+ str(position[1]) +' '+ str(position[2]) + '\n')
 
 
+  # compute orientation for each pose
+  orientation_grnd = compute_pose_orientations(pos_grnd)
+
   ####################################################################
   # Close files
   ####################################################################
@@ -169,10 +219,13 @@ if __name__ == "__main__":
 
   # convert data to numpy arrays
   pos_grnd = np.array( pos_grnd )
+  orientation_grnd = np.array(orientation_grnd)
+
 
   xy_path = []
   zy_path = []
   lines3D = []
+  orientations3D = []
 
   x_grnd = pos_grnd[:,0]
   y_grnd = pos_grnd[:,1]
@@ -189,6 +242,10 @@ if __name__ == "__main__":
   ph.plotPaths2D( zy_path, labels, colors)
 
   ph.plotPaths3D( lines3D, labels, colors )
+
+  colors = np.array( [('r','b','g')] )
+  orientations3D.append( (orientation_grnd[:,0], orientation_grnd[:,1], orientation_grnd[:,2]) )
+  ph.plotPathWithOrientation3D(lines3D, orientations3D, labels, colors)
 
   ####################################################################
   # Show all plots
