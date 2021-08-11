@@ -1,4 +1,6 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 import argparse
 import rospy
 import numpy as np
@@ -155,7 +157,7 @@ if __name__ == "__main__":
   # Close files
   ####################################################################
 
-  print "Output saved on " + outputFileName
+  print("Output saved on {}".format(outputFileName))
 
   inputFile.close()
   outputFile.close()

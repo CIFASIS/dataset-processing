@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 import argparse
 import utm
 from sensor_msgs.msg import NavSatFix, NavSatStatus
@@ -72,7 +75,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '-o',
         '--output',
-        required=False,
+        required=True,
         help="out file in TUM format")
     args = parser.parse_args()
 
@@ -80,7 +83,7 @@ if __name__ == '__main__':
     initialy = 0
     initialz = 0
 
-    f_in = open(args.input, 'rw')
+    f_in = open(args.input, 'r')
     f_out = open(args.output, 'w+')
 
     seq_GGA = 0
