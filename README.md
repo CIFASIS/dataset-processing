@@ -59,6 +59,15 @@ For the visualization of GPS measurements on ROS we recomend [mapviz](https://gi
 
 [//]: # (If ORB-SLAM crashes, it is possible to recover the estimated trajectory from the file tracked_poses_tum.log)
 
+## Visual-Inertial Odometry Systems (NEW) {#vio}
+
+We suggest to take a look at our new publication:
+
+J. Cremona, R. Comelli, T. Pire, **Experimental evaluation of Visual-Inertial Odometry systems for arable farming**. Journal of Field Robotics, 2022. DOI: https://doi.org/10.1002/rob.22099
+
+There we have tested the most relevant state-of-the-art Visual-Inertial Odometry Systems including [ORB-SLAM3](https://arxiv.org/abs/2206.05066), [Basalt](https://gitlab.com/VladyslavUsenko/basalt), [Kimera-VIO](https://github.com/MIT-SPARK/Kimera-VIO), etc.
+[This](https://github.com/CIFASIS/slam_agricultural_evaluation) is the corresponding repository and the submitted version of the paper can be found [here](https://arxiv.org/abs/2206.05066).
+
 # Dataset evaluation
 
 We recomend the [evo](https://github.com/MichaelGrupp/evo) evaluation tool.
@@ -83,12 +92,14 @@ evo_traj tum --ref=gt_tum_02.txt FrameTrajectory_TUM_Format.txt -p --plot_mode=x
 
 	sudo apt install pv
 
+Apart from this, it is needed Python 3 to run these scripts.
+
 ## Run convertion script
 A bash script is provided to generate rosbag files from raw data.
 In addition, a tar containing files as ASL format is also generated for each sequence.
-To do this, just run:
+To do this, after downloading, joining and extracting raw data, run:
 ```
-./compressAndSplit.sh -deac
+./compressAndSplit.sh -dea
 ```
 Flags (see below for more details):
 
@@ -109,3 +120,5 @@ discarding the last part of these sequences. Duration of the generated rosbags i
 Additionally, an issue related to the timestamps was fixed. We found that multiple rows were labeled with the same timestamp.
 To solve this, `-e` flag allows to fix timestamps making them equidistant.
 See `modify_bag_imu_timestamps.py` for more details.
+
+This has been better explained in the aforementioned new publication.
