@@ -47,7 +47,7 @@ def save_asl_format(inbag_path, calib, left_topic, right_topic, imu_topic, outpu
 	parsed_calib = None
 	if calib is not None:
 		with open(calib) as input_calib:
-			parsed_calib = yaml.load(input_calib)
+			parsed_calib = yaml.load(input_calib, yaml.SafeLoader)
 
 	if os.path.exists(output):
 		raise ValueError("Output folder already exists")
