@@ -71,7 +71,7 @@ for i in `seq 1 6`; do
 
   # generate rosbag
   echo "Creating $OUTPUT_DIR/$SEQ_NAME.bag"
-  python $CURRENT_DIR/create_bagfile.py $PY_ARGS
+  python3 $CURRENT_DIR/create_bagfile.py $PY_ARGS
 
   if [ $ASL_FORMAT -eq 1 ] ; then
     echo "Compressing $ASL_SEQ_DIR"
