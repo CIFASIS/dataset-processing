@@ -59,7 +59,7 @@ For the visualization of GPS measurements on ROS we recomend [mapviz](https://gi
 
 [//]: # (If ORB-SLAM crashes, it is possible to recover the estimated trajectory from the file tracked_poses_tum.log)
 
-## Visual-Inertial Odometry Systems (NEW) {#vio}
+## Visual-Inertial Odometry Systems (NEW)
 
 We suggest to take a look at our new publication:
 
