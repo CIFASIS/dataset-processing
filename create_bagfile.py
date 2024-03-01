@@ -368,7 +368,7 @@ def calculate_odom(x, y, theta, vel, angle, delta_t, direction):
   theta_next = (vel/1.6) * math.tan(k*(angle+ang_offset)) * delta_t + theta
   v_ang = (theta_next - theta) / delta_t
 
-  return x_next, y_next, theta_next, v_x, v_y , v_ang 
+  return x_next, y_next, theta_next, v_x, v_y , v_ang, vel
 
 # Convert the orientation angle in Quaternion for ROS
 def calculate_orientation(theta):
@@ -377,7 +377,7 @@ def calculate_orientation(theta):
   return quat
 
 # Save the odometry msg in the Rosbag
-def save_odom_bag(seq, seconds, nanoseconds, v_x, v_y, v_ang, x, y, orientation):
+def save_odom_bag(seq, seconds, nanoseconds,vel, v_ang, x, y, orientation):
 
   odom_msg = Odometry()
   odom_msg.header.seq = seq
@@ -393,8 +393,8 @@ def save_odom_bag(seq, seconds, nanoseconds, v_x, v_y, v_ang, x, y, orientation)
   odom_msg.pose.pose.orientation.y = orientation[1]
   odom_msg.pose.pose.orientation.z = orientation[2]
   odom_msg.pose.pose.orientation.w = orientation[3]
-  odom_msg.twist.twist.linear.x = v_x
-  odom_msg.twist.twist.linear.y = v_y
+  odom_msg.twist.twist.linear.x = vel
+  odom_msg.twist.twist.linear.y = 0
   odom_msg.twist.twist.linear.z = 0
   odom_msg.twist.twist.angular.x = 0
   odom_msg.twist.twist.angular.y = 0
@@ -638,9 +638,9 @@ if __name__ == "__main__":
       if args.max_duration and rospy.Time(seconds, nanoseconds) > max_end_time:
         break
       delta_t = 0.1 # needs to be changed to the time diference between timestamps
-      x_next, y_next, theta_next, v_x, v_y, v_ang = calculate_odom(x, y, theta, velo_l, angle, delta_t,direction)
+      x_next, y_next, theta_next, v_x, v_y, v_ang, linear_vel = calculate_odom(x, y, theta, velo_l, angle, delta_t,direction)
       orientation = calculate_orientation(theta)
-      save_odom_bag(seq, seconds, nanoseconds, v_x, v_y, v_ang, x, y, orientation)
+      save_odom_bag(seq, seconds, nanoseconds, linear_vel, v_ang, x, y, orientation)
       global_timestamps.append(rospy.Time(seconds,nanoseconds))
       x_odom.append(x) #used for tf, tfor transform odom to baselink
       y_odom.append(y) #used for tf, tfor transform odom to baselink
